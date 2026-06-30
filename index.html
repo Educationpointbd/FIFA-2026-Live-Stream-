@@ -3,197 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live TV Pro - Telegram Bot</title>
-    <!-- HLS.js for M3U8 support -->
+    <title>Live TV Bot</title>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-    <!-- Telegram Web App Script -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
     <style>
-        :root {
-            --primary-color: #0088cc;
-            --bg-color: #0a0a0a;
-            --card-bg: #1a1a1a;
-            --text-color: #ffffff;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0f0f0f; color: white; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
         
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
-        }
+        .header { width: 100%; padding: 15px; text-align: center; background: #1e1e1e; box-shadow: 0 2px 10px rgba(0,0,0,0.5); font-weight: bold; font-size: 20px; color: #0088cc; }
 
-        /* Header */
-        .header {
-            width: 100%;
-            padding: 15px;
-            background: var(--card-bg);
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--primary-color);
-            border-bottom: 2px solid var(--primary-color);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+        .video-container { width: 100%; max-width: 800px; aspect-ratio: 16 / 9; background: #000; margin-top: 10px; position: relative; }
+        video { width: 100%; height: 100%; border-bottom: 2px solid #0088cc; }
 
-        /* Video Container */
-        .player-wrapper {
-            width: 100%;
-            max-width: 900px;
-            aspect-ratio: 16 / 9;
-            background: #000;
-            position: relative;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.8);
-        }
+        .channel-info { width: 90%; margin-top: 15px; padding: 15px; background: #1e1e1e; border-radius: 10px; border-left: 5px solid #0088cc; }
 
-        video, iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
+        .controls { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 90%; margin-top: 20px; }
+        .btn { padding: 12px; border: none; border-radius: 8px; background: #0088cc; color: white; cursor: pointer; font-size: 14px; transition: 0.3s; text-align: center; text-decoration: none; }
+        .btn:hover { background: #005f8d; }
 
-        /* Channel Info */
-        .info-box {
-            width: 95%;
-            margin: 15px 0;
-            padding: 15px;
-            background: var(--card-bg);
-            border-radius: 12px;
-            border-left: 4px solid var(--primary-color);
-        }
-
-        .info-box h2 { font-size: 1.1rem; margin-bottom: 5px; }
-        .info-box p { font-size: 0.85rem; color: #aaa; }
-
-        /* Channel Grid */
-        .channel-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-            gap: 12px;
-            width: 95%;
-            padding-bottom: 30px;
-        }
-
-        .channel-card {
-            background: var(--card-bg);
-            padding: 15px 10px;
-            border-radius: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: 0.3s;
-            border: 1px solid #333;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .channel-card:hover {
-            background: var(--primary-color);
-            transform: translateY(-3px);
-        }
-
-        .active-chan {
-            background: var(--primary-color) !important;
-            border-color: white;
-        }
-
-        /* Animation */
-        .loading-spinner {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
+        /* Loading Animation */
+        #status { font-size: 12px; color: #888; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <div class="header">LIVE TV STREAM</div>
+    <div class="header">Live Stream Player</div>
 
-    <div class="player-wrapper" id="playerWrapper">
-        <div class="loading-spinner" id="spinner">Loading...</div>
-        <video id="videoPlayer" controls autoplay playsinline></video>
+    <div class="video-container">
+        <video id="video" controls autoplay playsinline></video>
     </div>
 
-    <div class="info-box">
-        <h2 id="currentTitle">Select a Channel</h2>
-        <p id="statusText">System Ready • High Quality</p>
+    <div class="channel-info">
+        <h3 id="channelName">Live TV Channel</h3>
+        <p id="status">Status: Connecting...</p>
     </div>
 
-    <div class="channel-grid">
-        <!-- Somoy TV -->
-        <div class="channel-card" onclick="loadChannel('https://rtmp.somoynews.tv/somoytv/live/playlist.m3u8', 'Somoy TV', 'hls')">Somoy TV</div>
-        
-        <!-- T Sports -->
-        <div class="channel-card" onclick="loadChannel('https://live-tsports-ott.akamaized.net/hls/live/2040685/tsports/index.m3u8', 'T Sports', 'hls')">T Sports</div>
-        
-        <!-- Independent TV -->
-        <div class="channel-card" onclick="loadChannel('https://independent.pc.cdn.bitgravity.com/itv/live/playlist.m3u8', 'Independent TV', 'hls')">Independent</div>
-        
-        <!-- Jamuna TV (YouTube example) -->
-        <div class="channel-card" onclick="loadChannel('9p9u_V6W6S4', 'Jamuna TV', 'youtube')">Jamuna TV</div>
-        
-        <!-- Extra/Manual Link -->
-        <div class="channel-card" onclick="loadChannel('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'Test Stream', 'hls')">Test Channel</div>
+    <div class="controls" id="channelList">
+        <!-- চ্যনেল বাটন গুলো এখানে অ্যাড হবে -->
+        <button class="btn" onclick="playM3U8('https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', 'Test Channel')">Test Live</button>
+        <button class="btn" onclick="playM3U8('আপনার_IPTV_লিংক_এখানে', 'Somoy TV')">Somoy TV</button>
     </div>
 
     <script>
-        const video = document.getElementById('videoPlayer');
-        const wrapper = document.getElementById('playerWrapper');
-        const titleText = document.getElementById('currentTitle');
-        const statusText = document.getElementById('statusText');
+        const video = document.getElementById('video');
+        const statusText = document.getElementById('status');
+        const channelNameDisplay = document.getElementById('channelName');
 
-        let hls = new Hls();
+        function playM3U8(url, name) {
+            channelNameDisplay.innerText = name;
+            statusText.innerText = "Status: Loading...";
 
-        function loadChannel(url, name, type) {
-            // Update UI
-            titleText.innerText = name;
-            statusText.innerText = "Connecting to secure server...";
-            
-            // Remove previous active classes
-            document.querySelectorAll('.channel-card').forEach(el => el.classList.remove('active-chan'));
-            event.currentTarget.classList.add('active-chan');
-
-            if (type === 'hls') {
-                showVideoPlayer();
-                if (Hls.isSupported()) {
-                    hls.destroy(); // Clear previous instance
-                    hls = new Hls();
-                    hls.loadSource(url);
-                    hls.attachMedia(video);
-                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                        video.play();
-                        statusText.innerText = "Status: Playing Live";
-                    });
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    video.src = url;
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
                     video.play();
-                }
-            } else if (type === 'youtube') {
-                showYoutubePlayer(url);
+                    statusText.innerText = "Status: Playing";
+                });
+            } 
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                    statusText.innerText = "Status: Playing";
+                });
+            } else {
+                statusText.innerText = "Error: Your browser doesn't support HLS.";
             }
         }
 
-        function showVideoPlayer() {
-            wrapper.innerHTML = '<video id="videoPlayer" controls autoplay playsinline></video>';
-            // Re-assign reference
-            window.video = document.getElementById('videoPlayer');
-        }
-
-        function showYoutubePlayer(videoId) {
-            wrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" allowfullscreen allow="autoplay"></iframe>`;
-            statusText.innerText = "Status: Playing YouTube Live";
-        }
-
-        // Initialize Telegram WebApp
-        const tg = window.Telegram.WebApp;
-        tg.expand(); // বটের স্ক্রিন বড় করার জন্য
+        // Default Load
+        window.onload = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const streamUrl = urlParams.get('stream');
+            const name = urlParams.get('name') || "Live TV";
+            
+            if(streamUrl) {
+                playM3U8(streamUrl, name);
+            }
+        };
     </script>
 </body>
-    </html>
+</html>
