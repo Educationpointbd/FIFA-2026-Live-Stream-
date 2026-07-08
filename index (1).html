@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SportsX Web - TMA Player Engine</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Pro Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- HLS.js Library for M3U8 Playback -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
+        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .btn-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        /* simple overlay for user-interaction autoplay fallback */
+        #autoplay-overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            background: linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.8));
+            z-index: 60;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+
+    <!-- Header Section -->
+    <header class="bg-slate-900/95 border-b border-slate-800/80 p-4 sticky top-0 z-50 shadow-md">
+        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-bolt text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-base tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SPORTSX PRO</h1>
+                    <span class="text-[9px] text-slate-400 font-mono block">All-Source Multi-Engine IPTV Player</span>
+                </div>
+            </div>
+            
+            <!-- Real-time Search Engine -->
+            <div class="relative w-full sm:w-64">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                    <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
+                </span>
+                <input type="text" id="search-input" oninput="triggerSearch()" placeholder="চ্যানেল বা ম্যাচ খুঁজুন..." 
+                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-100">
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-5xl w-full mx-auto p-3 space-y-4">
+
+        <!-- Custom Advanced Video Player -->
+        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl relative aspect-video group">
+            <video id="main-player" class="w-full h-full object-contain" controls autoplay playsinline></video>
+            <!-- Autoplay fallback overlay -->
+            <div id="autoplay-overlay" class="hidden flex">
+                <div class="text-center">
+                    <p class="text-sm font-bold text-white mb-3">Tap to start playback</p>
+                    <button id="autoplay-start-btn" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">
+                        Start
+                    </button>
+                </div>
+            </div>
+            <!-- Custom Dynamic Loader -->
+            <div id="player-spinner" class="absolute inset-0 bg-slate-950/95 flex flex-col justify-center items-center hidden">
+                <div class="relative flex items-center justify-center mb-3">
+                    <div class="animate-spin rounded-full h-10 w-10 border-2 border-emerald-500 border-t-transparent"></div>
+                    <i class="fa-solid fa-play text-xs text-emerald-400 absolute"></i>
+                </div>
+                <span id="player-spinner-text" class="text-xs text-slate-400 font-mono">Resolving Streaming Node...</span>
+            </div>
+        </div>
+
+        <!-- Dynamic Multi-Server / Source Switching Panel -->
+        <div id="source-panel" class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-wrap items-center gap-2">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
+                <i class="fa-solid fa-server text-emerald-400 mr-1"></i> Multi Source:
+            </span>
+            <div id="servers-container" class="flex flex-wrap gap-2">
+                <!-- Servers / Alternative Links Button will append here dynamically -->
+                <span class="text-xs text-slate-600 font-mono">No active channel selected</span>
+            </div>
+        </div>
+
+        <!-- M3U Playlist URL Importer (SportsX Future App Style) -->
+        <section class="glass-card rounded-2xl p-4 space-y-3">
+            <div class="flex justify-between items-center" onclick="toggleElement('importer-panel')">
+                <h3 class="text-xs font-bold text-slate-300 flex items-center cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-down text-emerald-400 mr-2"></i> M3U Playlist Importer (IPTV Link)
+                    <i class="fa-solid fa-caret-down ml-2 text-[10px] text-slate-500"></i>
+                </h3>
+                <span class="text-[10px] text-slate-500 font-mono">Auto Group Parsing Enabled</span>
+            </div>
+            
+            <div id="importer-panel" class="space-y-2 hidden">
+                <input type="text" id="m3u-title" placeholder="প্লেলিস্টের নাম দিন (e.g., My BD TV Playlist)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                <div class="flex gap-2">
+                    <input type="text" id="m3u-url" placeholder="Paste .m3u or .m3u8 Playlist URL..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                    <button onclick="importOnlineM3UPlaylist()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">Import List</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dynamic Category Navigation Tabs -->
+        <div class="flex border-b border-slate-800 text-xs font-semibold overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
+            <button onclick="switchTab('sports')" id="tab-sports" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-trophy mr-1"></i> Live Matches
+            </button>
+            <button onclick="switchTab('bd-tv')" id="tab-bd-tv" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-circle-play mr-1"></i> BD Channels
+            </button>
+            <button onclick="switchTab('premium')" id="tab-premium" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-gem mr-1"></i> Indian Premium
+            </button>
+            <button onclick="switchTab('imported')" id="tab-imported" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-folder-open mr-1"></i> Imported IPTV
+            </button>
+        </div>
+
+        <!-- Active Channels Grid -->
+        <section class="min-h-[300px] relative">
+            <div id="channels-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <!-- Dynamically Rendered IPTV Cards -->
+            </div>
+            
+            <!-- Global Grid Loading Progress Bar -->
+            <div id="grid-loader" class="flex flex-col items-center justify-center py-20 hidden">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                <p class="text-xs text-slate-500 mt-2 font-mono">Crawling Multi-Source Repositories...</p>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- App Bottom Footer -->
+    <footer class="bg-slate-950 text-slate-700 text-center py-5 text-[10px] border-t border-slate-900 font-mono">
+        <p>© 2026 SportsX TMA Web-Client • Built for Dynamic IPTV Broadcast Protocols</p>
+    </footer>
+
+    <script>
+        // Telegram WebApp Setup
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        const video = document.getElementById('main-player');
+        const spinner = document.getElementById('player-spinner');
+        const spinnerText = document.getElementById('player-spinner-text');
+        const gridLoader = document.getElementById('grid-loader');
+        const autoplayOverlay = document.getElementById('autoplay-overlay');
+        const autoplayBtn = document.getElementById('autoplay-start-btn');
+
+        let activeTab = 'sports';
+        let searchQuery = '';
+        let hlsInstance = null;
+        
+        // Multi-Source Playlist Repositories
+        const DYNAMIC_SOURCES = {
+            sports_scraped: 'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u',
+            bd_scraped: 'https://raw.githubusercontent.com/imShakil/tvlink/refs/heads/main/iptv.m3u8',
+            premium_scraped: 'https://iptv-org.github.io/iptv/categories/sports.m3u'
+        };
+
+        // Channel Memory Array
+        let masterChannelDb = {
+            sports: [],
+            bd_tv: [],
+            premium: [],
+            imported: []
+        };
+
+        // CORS Proxies
+        const CORS_PROXIES = [
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            (url) => `https://thingproxy.freeboard.io/fetch/${url}`
+        ];
+        let currentProxyIdx = 0;
+
+        // Current Stream Info for Servers
+        let activeStreamList = [];
+        let activeStreamIdx = 0;
+        let activeStreamTitle = '';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadImportedPlaylists();
+            await syncMasterDatabases();
+            switchTab('sports');
+
+            // Auto-play behavior: if there are channels available, auto-load the first one and find fastest server
+            try {
+                const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium, ...masterChannelDb.imported];
+                if (pool.length > 0) {
+                    // Prefer the active tab's top channel if exists
+                    let candidate = null;
+                    const tabList = {
+                        sports: masterChannelDb.sports,
+                        'bd-tv': masterChannelDb.bd_tv,
+                        premium: masterChannelDb.premium,
+                        imported: masterChannelDb.imported
+                    }[activeTab] || pool;
+
+                    if (tabList && tabList.length > 0) candidate = tabList[0];
+                    else candidate = pool[0];
+
+                    if (candidate) {
+                        // Load with fastest-server selection
+                        await loadSourceEngine(candidate.url, candidate.title, { autoSelectFastest: true, autoplay: true });
+                    }
+                }
+            } catch (e) {
+                console.warn("Auto-start failed", e);
+            }
+        });
+
+        // Bypassing browser-CORS blockages
+        // A utility that tries available proxies and returns the first successful fetch Response
+        async function fetchViaProxies(url, options = {}) {
+            let lastErr = null;
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxied = CORS_PROXIES[i](url);
+                try {
+                    const controller = new AbortController();
+                    const timeout = options.timeout || 5000;
+                    const timer = setTimeout(() => controller.abort(), timeout);
+                    const resp = await fetch(proxied, { signal: controller.signal, method: options.method || 'GET', headers: options.headers || {} });
+                    clearTimeout(timer);
+                    if (resp.ok) {
+                        currentProxyIdx = i;
+                        return resp;
+                    } else {
+                        lastErr = new Error(`Proxy ${i} returned ${resp.status}`);
+                    }
+                } catch (err) {
+                    lastErr = err;
+                    console.warn(`Proxy Node ${i} Failed for ${url}:`, err);
+                }
+            }
+            throw lastErr || new Error("All proxy servers are offline");
+        }
+
+        // Quick latency measurement: fetch the manifest via proxies with short timeout and measure time-to-first-byte
+        async function measureLatency(url, timeoutMs = 2500) {
+            const start = performance.now();
+            try {
+                const resp = await fetchViaProxies(url, { timeout: timeoutMs, method: 'GET' });
+                // If headers arrive, measure latency
+                if (resp) {
+                    const t = performance.now() - start;
+                    // Try to consume only a small chunk to be polite
+                    try {
+                        const reader = resp.body && resp.body.getReader && await resp.body.getReader();
+                        if (reader) {
+                            // Try to read one chunk but do not wait forever
+                            const readerController = new AbortController();
+                            const readTimeout = setTimeout(() => reader.cancel(), 500);
+                            const result = await reader.read().catch(() => null);
+                            clearTimeout(readTimeout);
+                        }
+                    } catch (e) { /* ignore stream read errors */ }
+                    return Math.max(1, Math.round(t)); // ms
+                }
+            } catch (err) {
+                return Infinity; // unreachable/failed
+            }
+            return Infinity;
+        }
+
+        // Probe a list of URLs (limited to first N to save time) and return them sorted by measured latency
+        async function probeAndSort(urls, limit = 6) {
+            const candidates = urls.slice(0, limit);
+            const measurements = await Promise.all(candidates.map(async (u) => {
+                const ms = await measureLatency(u, 2500).catch(() => Infinity);
+                return { url: u, latency: ms };
+            }));
+            measurements.sort((a, b) => a.latency - b.latency);
+            return measurements.map(m => m.url);
+        }
+
+        // Custom M3U Parser logic supporting Channel Grouping, logos
+        function parseM3uString(text) {
+            const lines = text.split('\n');
+            let channels = [];
+            let current = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    current = {};
+                    
+                    // Logo Match
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    current.logo = logoMatch ? logoMatch[1] : '';
+
+                    // Group Title Match
+                    const groupMatch = line.match(/group-title="([^"]+)"/);
+                    current.group = groupMatch ? groupMatch[1] : '';
+
+                    // Channel Title
+                    const lastComma = line.lastIndexOf(',');
+                    current.title = lastComma !== -1 ? line.substring(lastComma + 1).trim() : 'Unnamed Channel';
+                } else if ((line.startsWith('http') || line.startsWith('https')) && current) {
+                    current.url = line;
+                    channels.push(current);
+                    current = null;
+                }
+            }
+            return channels;
+        }
+
+        // Fetch & Cache dynamically to avoid API limits
+        async function syncMasterDatabases() {
+            gridLoader.classList.remove('hidden');
+            try {
+                // Fetch & parse BD TV Link
+                const bdRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.bd_scraped, { timeout: 7000 })).text();
+                masterChannelDb.bd_tv = parseM3uString(bdRaw);
+
+                // Fetch & parse Sports Matches Link
+                const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 7000 })).text();
+                masterChannelDb.sports = parseM3uString(sportsRaw);
+
+                // Fetch & parse Premium Indian / Global Link
+                const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 7000 })).text();
+                masterChannelDb.premium = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
+
+                console.log("Databases Sync Successful!");
+            } catch (err) {
+                console.error("Master Sync failed. Falling back to default servers...", err);
+                // Fallback hardcoded servers if networks fail
+                masterChannelDb.sports = [
+                    { title: "T Sports Live (Source 1)", url: "https://stream.sunplex.live/T-SPORTS/index.m3u8", logo: "" },
+                    { title: "T Sports HD (Source 2)", url: "https://tvsen7.aynaott.com/tsportsfhd/index.m3u8", logo: "" }
+                ];
+                masterChannelDb.bd_tv = [
+                    { title: "Gazi TV Live HD", url: "https://stream.sunplex.live/GAZI-TV/index.m3u8", logo: "" },
+                    { title: "BTV World Live", url: "http://38.96.178.201:80/live/BTV/index.m3u8", logo: "" }
+                ];
+            } finally {
+                gridLoader.classList.add('hidden');
+            }
+        }
+
+        // Render Tab views
+        function switchTab(tabId) {
+            activeTab = tabId;
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'border-emerald-400', 'border-b-2');
+                btn.classList.add('text-slate-400');
+            });
+            
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('text-emerald-400', 'border-emerald-400', 'border-b-2');
+                activeBtn.classList.remove('text-slate-400');
+            }
+            
+            renderChannelsList();
+        }
+
+        // Live Search Handler
+        function triggerSearch() {
+            searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            renderChannelsList();
+        }
+
+        // Render UI Cards on screen
+        function renderChannelsList() {
+            const grid = document.getElementById('channels-grid');
+            grid.innerHTML = '';
+
+            let sourceList = [];
+            if (activeTab === 'sports') sourceList = masterChannelDb.sports;
+            else if (activeTab === 'bd-tv') sourceList = masterChannelDb.bd_tv;
+            else if (activeTab === 'premium') sourceList = masterChannelDb.premium;
+            else if (activeTab === 'imported') sourceList = masterChannelDb.imported;
+
+            // Apply Search Filtering
+            if (searchQuery) {
+                sourceList = sourceList.filter(ch => ch.title.toLowerCase().includes(searchQuery));
+            }
+
+            if (sourceList.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-20 text-center text-slate-600 text-xs font-mono">
+                        <i class="fa-solid fa-binoculars text-2xl text-slate-700 mb-2 block"></i>
+                        No channels matched your request.
+                    </div>
+                `;
+                return;
+            }
+
+            sourceList.forEach((ch, index) => {
+                const card = document.createElement('div');
+                card.className = 'glass-card rounded-xl p-3 flex items-center justify-between hover:border-emerald-500/30 hover:bg-slate-900/40 transition duration-300 group cursor-pointer';
+                
+                // Build Channel logo
+                const logoHtml = ch.logo ? 
+                    `<img src="${ch.logo}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1" onerror="this.src='https://placehold.co/40x40/0f172a/10b981?text=TV'">` :
+                    `<div class="w-10 h-10 bg-slate-950 rounded-lg flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition duration-300">
+                        <i class="fa-solid fa-play text-xs"></i>
+                     </div>`;
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}', {autoSelectFastest: true, autoplay: true})">
+                        ${logoHtml}
+                        <div class="truncate">
+                            <h4 class="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition truncate">${ch.title}</h4>
+                            <p class="text-[9px] text-slate-500 font-mono truncate mt-0.5">${ch.group || 'Active IPTV Node'}</p>
+                        </div>
+                    </div>
+                    ${activeTab === 'imported' ? `
+                    <button onclick="removeImportedChannel('${ch.id}')" class="text-slate-600 hover:text-rose-400 p-2 transition">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                    ` : ''}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Initialize streaming player with Advanced Failover and Fastest-server selection
+        async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true }) {
+            activeStreamTitle = title;
+
+            // Build candidate pool: include other channels with similar title to increase chance of same stream on different nodes
+            const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|\d+/g, '').trim() : '';
+            const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium, ...masterChannelDb.imported];
+            const candidates = [url];
+
+            // gather matching URLs (avoid duplicates)
+            pool.forEach(ch => {
+                if (ch.url && !candidates.includes(ch.url)) {
+                    if (cleanTitle && ch.title && ch.title.toLowerCase().includes(cleanTitle)) {
+                        candidates.push(ch.url);
+                    }
+                }
+            });
+
+            // also include a raw fallback of the given URL (so guaranteed at least one)
+            activeStreamList = candidates;
+
+            // Auto-select fastest by probing (only if option set)
+            if (options.autoSelectFastest && activeStreamList.length > 1) {
+                spinner.classList.remove('hidden');
+                spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 6)} servers for fastest node...`;
+                try {
+                    const sorted = await probeAndSort(activeStreamList, 6);
+                    // Put fastest first; keep all others as fallback
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                } catch (e) {
+                    console.warn("Probing failed, using original order", e);
+                } finally {
+                    spinner.classList.add('hidden');
+                }
+            }
+
+            // start on best candidate
+            activeStreamIdx = 0;
+            renderServerButtons();
+
+            // attempt play
+            playSelectedSource({ autoplay: options.autoplay });
+        }
+
+        // Render Server Buttons underneath Video Player (Multi-source Panel)
+        function renderServerButtons() {
+            const container = document.getElementById('servers-container');
+            container.innerHTML = '';
+
+            if (!activeStreamList || activeStreamList.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-600 font-mono">No active channel selected</span>`;
+                return;
+            }
+
+            activeStreamList.forEach((src, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `text-[10px] px-3 py-1.5 rounded-lg border font-bold transition duration-200 ${
+                    idx === activeStreamIdx ? 
+                    'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md shadow-emerald-500/15' : 
+                    'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700'
+                }`;
+                btn.innerHTML = `<i class="fa-solid fa-play text-[8px] mr-1"></i> Server ${idx + 1}`;
+                btn.onclick = async (ev) => {
+                    ev.stopPropagation();
+                    activeStreamIdx = idx;
+                    renderServerButtons();
+                    await playSelectedSource({ autoplay: true, forceProbe: false });
+                };
+                container.appendChild(btn);
+            });
+
+            // add a quick reload button
+            const reloadBtn = document.createElement('button');
+            reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 ml-2';
+            reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Player`;
+            reloadBtn.onclick = () => {
+                quickReloadPlayer();
+            };
+            container.appendChild(reloadBtn);
+        }
+
+        // Play Selected Video Node
+        async function playSelectedSource(opts = { autoplay: true, forceProbe: false }) {
+            if (!activeStreamList || activeStreamList.length === 0) return;
+            let liveUrl = activeStreamList[activeStreamIdx];
+
+            // If URL is raw and might be blocked, use currently selected proxy wrapper if necessary
+            // But Hls can handle remote m3u8 directly. We will attempt direct and fallback to proxies on failure.
+            // Trigger Loader Spinner
+            spinner.classList.remove('hidden');
+            spinnerText.textContent = `Connecting: Server ${activeStreamIdx + 1}...`;
+
+            // Destroy previous instance quickly
+            if (hlsInstance) {
+                try { hlsInstance.stopLoad(); } catch(e){}
+                try { hlsInstance.destroy(); } catch(e){}
+                hlsInstance = null;
+            }
+
+            // If the URL looks proxied already (starts with https://api.allorigins.win or corsproxy), skip probe
+            const isProxied = CORS_PROXIES.some(pf => pf('x').startsWith(liveUrl.substring(0, 10)));
+
+            // If the chosen candidate is slow and we haven't forced a probe, try reordering again quickly (cheap)
+            if (!opts.forceProbe && activeStreamList.length > 1) {
+                // probe top 3 to ensure the chosen one is still fastest
+                try {
+                    const sorted = await probeAndSort(activeStreamList.slice(0, 4), 4);
+                    // move fastest to top
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                    activeStreamIdx = 0;
+                    liveUrl = activeStreamList[activeStreamIdx];
+                    renderServerButtons();
+                } catch (e) {
+                    // ignore probe errors
+                }
+            }
+
+            // Attempt playback with HLS.js when supported
+            const tryHlsPlayback = async (src) => {
+                if (Hls.isSupported()) {
+                    hlsInstance = new Hls({
+                        maxBufferLength: 22,
+                        enableWorker: true,
+                        liveSyncDurationCount: 3,
+                        manifestLoadingTimeOut: 8000,
+                        xhrSetup: function(xhr, url) {
+                            // set short connection timeouts if needed
+                            xhr.timeout = 8000;
+                        }
+                    });
+                    hlsInstance.loadSource(src);
+                    hlsInstance.attachMedia(video);
+
+                    let manifestParsed = false;
+                    const manifestPromise = new Promise((resolve, reject) => {
+                        const onManifest = () => {
+                            manifestParsed = true;
+                            resolve();
+                        };
+                        const onError = (event, data) => {
+                            if (data && data.fatal) {
+                                if (!manifestParsed) reject(data);
+                            }
+                        };
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, onManifest);
+                        hlsInstance.on(Hls.Events.ERROR, onError);
+
+                        // safety timeout
+                        setTimeout(() => {
+                            if (!manifestParsed) reject(new Error('manifest timed out'));
+                        }, 8000);
+                    });
+
+                    try {
+                        await manifestPromise;
+                        spinner.classList.add('hidden');
+                        // Attempt autoplay; if blocked show overlay for user interaction
+                        if (opts.autoplay) {
+                            try {
+                                await video.play();
+                                hideAutoplayOverlay();
+                            } catch (err) {
+                                // autoplay blocked -> show overlay
+                                showAutoplayOverlay();
+                                console.warn("Autoplay blocked; waiting user gesture");
+                            }
+                        }
+                        // recover media errors automatically
+                        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                            if (data && data.fatal) {
+                                switch (data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        console.warn("Network error - failover triggered", data);
+                                        triggerAutoFailover();
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        hlsInstance.recoverMediaError();
+                                        break;
+                                    default:
+                                        triggerAutoFailover();
+                                        break;
+                                }
+                            }
+                        });
+                        return true;
+                    } catch (err) {
+                        try { hlsInstance.destroy(); } catch(e) {}
+                        hlsInstance = null;
+                        throw err;
+                    }
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Safari native HLS
+                    video.src = src;
+                    video.load();
+                    video.addEventListener('canplay', () => {
+                        spinner.classList.add('hidden');
+                        if (opts.autoplay) {
+                            video.play().catch(() => showAutoplayOverlay());
+                        }
+                    }, { once: true });
+
+                    video.addEventListener('error', () => {
+                        triggerAutoFailover();
+                    }, { once: true });
+                    return true;
+                }
+                return false;
+            };
+
+            // Try direct HLS playback first
+            try {
+                await tryHlsPlayback(liveUrl);
+                return;
+            } catch (err) {
+                console.warn("Direct playback failed, trying via proxies...", err);
+            }
+
+            // If direct playback failed, try wrapped proxies in order (rotate proxies)
+            const proxiesToTry = CORS_PROXIES.map(p => p(liveUrl));
+            for (let proxyUrl of proxiesToTry) {
+                spinnerText.textContent = `Trying proxy node...`;
+                try {
+                    await tryHlsPlayback(proxyUrl);
+                    return;
+                } catch (err) {
+                    console.warn("Proxy playback failed for", proxyUrl, err);
+                }
+            }
+
+            // If we've reached here, all attempts failed — final failover
+            spinnerText.textContent = `All attempts failed. Trying fallback...`;
+            triggerAutoFailover();
+        }
+
+        // Trigger Auto Failover Switch (Auto switches Server if crashes)
+        async function triggerAutoFailover() {
+            // If there are other streams, pick the next fastest one
+            if (activeStreamList.length > 1) {
+                activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
+                console.log(`Fallback triggered. Switching to Server Node ${activeStreamIdx + 1}`);
+                renderServerButtons();
+                playSelectedSource({ autoplay: true, forceProbe: true });
+            } else {
+                // Rotate proxy and retry
+                currentProxyIdx = (currentProxyIdx + 1) % CORS_PROXIES.length;
+                const proxied = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
+                activeStreamList[0] = proxied;
+                console.log(`No second link. Rotating proxy and retrying...`);
+                renderServerButtons();
+                playSelectedSource({ autoplay: true, forceProbe: true });
+            }
+        }
+
+        // Quick reload player function (keeps same index but re-probes quickly)
+        async function quickReloadPlayer() {
+            spinner.classList.remove('hidden');
+            spinnerText.textContent = 'Quick reloading...';
+            try {
+                // quick probe top candidates and reorder
+                if (activeStreamList.length > 1) {
+                    const sorted = await probeAndSort(activeStreamList.slice(0, 4), 4);
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                    activeStreamIdx = 0;
+                }
+                renderServerButtons();
+                await playSelectedSource({ autoplay: true, forceProbe: true });
+            } catch (e) {
+                console.warn("Quick reload failed", e);
+                triggerAutoFailover();
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        // Custom M3U Importer System (SportsX TV Style)
+        async function importOnlineM3UPlaylist() {
+            const nameInp = document.getElementById('m3u-title');
+            const urlInp = document.getElementById('m3u-url');
+
+            const name = nameInp.value.trim();
+            const url = urlInp.value.trim();
+
+            if (!name || !url) {
+                alert("প্লেলিস্টের নাম এবং সঠিক M3U লিংক দিন!");
+                return;
+            }
+
+            try {
+                gridLoader.classList.remove('hidden');
+                const rawM3u = await (await fetchViaProxies(url, { timeout: 8000 })).text();
+                const parsedChannels = parseM3uString(rawM3u);
+
+                if (parsedChannels.length === 0) {
+                    alert("লিংকটি থেকে কোনো সচল টিভি চ্যানেল খুঁজে পাওয়া যায়নি!");
+                    return;
+                }
+
+                // Add unique identifiers
+                parsedChannels.forEach(ch => {
+                    ch.id = 'imported-' + Math.random().toString(36).substr(2, 9);
+                    ch.group = name;
+                });
+
+                masterChannelDb.imported = [...masterChannelDb.imported, ...parsedChannels];
+                saveImportedPlaylists();
+
+                nameInp.value = '';
+                urlInp.value = '';
+                toggleElement('importer-panel');
+                switchTab('imported');
+
+                alert(`সফলভাবে ${parsedChannels.length}টি চ্যানেল ইম্পোর্ট করা হয়েছে!`);
+            } catch (err) {
+                alert("প্লেলিস্ট ফাইলটি লোড করতে ব্যর্থ হয়েছে। লিংকটি সচল এবং CORS ফ্রী কিনা চেক করুন।");
+                console.error(err);
+            } finally {
+                gridLoader.classList.add('hidden');
+            }
+        }
+
+        // Storage controllers
+        function saveImportedPlaylists() {
+            localStorage.setItem('sportsx_imported', JSON.stringify(masterChannelDb.imported));
+        }
+
+        function loadImportedPlaylists() {
+            const saved = localStorage.getItem('sportsx_imported');
+            masterChannelDb.imported = saved ? JSON.parse(saved) : [];
+        }
+
+        function removeImportedChannel(id) {
+            masterChannelDb.imported = masterChannelDb.imported.filter(ch => ch.id !== id);
+            saveImportedPlaylists();
+            renderChannelsList();
+        }
+
+        // Helper UI toggler
+        function toggleElement(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        // Autoplay overlay handling
+        function showAutoplayOverlay() {
+            if (autoplayOverlay) {
+                autoplayOverlay.style.display = 'flex';
+                autoplayOverlay.classList.remove('hidden');
+                autoplayBtn.onclick = async () => {
+                    try {
+                        await video.play();
+                        hideAutoplayOverlay();
+                    } catch (err) {
+                        console.warn("User-initiated play failed", err);
+                    }
+                };
+            }
+        }
+        function hideAutoplayOverlay() {
+            if (autoplayOverlay) {
+                autoplayOverlay.style.display = 'none';
+                autoplayOverlay.classList.add('hidden');
+            }
+        }
+
+        // Listen for network connectivity changes to try quick reconnect
+        window.addEventListener('online', () => {
+            console.log('Network back online — quick reload player');
+            quickReloadPlayer();
+        });
+
+        // Expose a debug function
+        window._sportsx_quick_reload = quickReloadPlayer;
+
+    </script>
+</body>
+</html>
