@@ -564,17 +564,17 @@
             const runHlsInstance = async (srcUrl) => {
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls({
-                        maxBufferLength: 30,             // Buffering increased to 30 seconds for stable connection
+                        maxBufferLength: 50,             // Buffering increased to 50 seconds for stable connection
                         maxMaxBufferLength: 60,          // Maximum buffer of 60 seconds to buffer-out temporary drops
-                        backBufferLength: 15,            // Save 15 seconds of back buffer
-                        liveSyncDurationCount: 3,        
+                        backBufferLength: 30,            // Save 30 seconds of back buffer
+                        liveSyncDurationCount: 10,        
                         enableWorker: true,              // Use web workers to prevent UI thread lag
                         lowLatencyMode: false,           // Disabled Low Latency for High Traffic buffering safety
-                        manifestLoadingTimeOut: 10000,   // Wait 10 seconds for manifest load
+                        manifestLoadingTimeOut: 20000,   // Wait 10 seconds for manifest load
                         levelLoadingTimeOut: 10000,
                         fragLoadingTimeOut: 15000,
-                        fragLoadingMaxRetry: 5,          // Retry fragments internally instead of immediately triggering failover
-                        manifestLoadingMaxRetry: 5
+                        fragLoadingMaxRetry: 10,          // Retry fragments internally instead of immediately triggering failover
+                        manifestLoadingMaxRetry: 10
                     });
 
                     hlsInstance.loadSource(srcUrl);
