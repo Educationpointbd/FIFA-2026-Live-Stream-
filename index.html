@@ -87,22 +87,32 @@
                 <i class="fa-solid fa-server text-emerald-400 mr-1"></i> Multi Source:
             </span>
             <div id="servers-container" class="flex flex-wrap gap-2">
-                <!-- Servers / Alternative Links Button will append here dynamically -->
                 <span class="text-xs text-slate-600 font-mono">No active channel selected</span>
             </div>
         </div>
 
-        <!-- M3U Playlist & Single Channel Importer -->
+        <!-- GitHub Cloud Auto-Sync & Local Storage Importer -->
         <section class="glass-card rounded-2xl p-4 space-y-3">
             <div class="flex justify-between items-center cursor-pointer" onclick="toggleElement('importer-panel')">
                 <h3 class="text-xs font-bold text-slate-300 flex items-center">
-                    <i class="fa-solid fa-plus-minus text-emerald-400 mr-2"></i> Add Stream (Single URL / M3U Playlist)
+                    <i class="fa-solid fa-cloud-arrow-down text-emerald-400 mr-2"></i> Permanent Storage & GitHub Auto-Sync
                     <i class="fa-solid fa-caret-down ml-2 text-[10px] text-slate-500"></i>
                 </h3>
-                <span class="text-[10px] text-slate-500 font-mono">Local Storage Sync</span>
+                <span class="text-[10px] text-slate-500 font-mono">Cloud Backup Config</span>
             </div>
             
             <div id="importer-panel" class="space-y-3 hidden transition-all">
+                <!-- GitHub Auto-Sync URL Input -->
+                <div class="p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
+                    <h4 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">GitHub Config Cloud Sync:</h4>
+                    <p class="text-[10px] text-slate-400">আপনার গিটহাবের RAW M3U প্লেলিস্ট লিঙ্ক এখানে পেস্ট করে রাখুন। অ্যাপ ওপেন হলেই তা অটো-সিঙ্ক হয়ে যাবে।</p>
+                    <div class="flex gap-2">
+                        <input type="text" id="github-sync-url" placeholder="https://raw.githubusercontent.com/your-username/repo/main/playlist.m3u" class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
+                        <button onclick="saveGitHubSyncConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-4 py-2 rounded-lg text-xs transition">Save & Sync</button>
+                    </div>
+                </div>
+
+                <!-- Local Manual Importer -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input type="text" id="m3u-title" placeholder="Stream / Channel Title" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
                     <input type="text" id="m3u-category" placeholder="Category (e.g. Sports, News)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
@@ -169,6 +179,12 @@
         let searchQuery = '';
         let hlsInstance = null;
 
+        // Anti-Looping Failover Variables
+        let lastFailoverTime = 0;
+        const FAILOVER_COOLDOWN_MS = 3000; // Wait 3 seconds before next failover
+        let currentUrlRetryCount = 0;
+        const MAX_RETRIES_PER_URL = 3;
+
         // Static Pre-configured Premium BD Streams with logos
         const PRE_CONFIGURED_BD = [
             { id: 'bd-tsports-1', title: 'T Sports Live HD (Server 1)', url: 'https://stream.sunplex.live/T-SPORTS/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg' },
@@ -195,11 +211,15 @@
             imported: []
         };
 
-        // CORS Proxies
+        // Enhanced Pro CORS Proxies Pool (Sequential high-speed routing)
         const CORS_PROXIES = [
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://thingproxy.freeboard.io/fetch/${url}`
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
+            (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
+            (url) => `https://yacdn.org/proxy/${encodeURIComponent(url)}`,
+            (url) => `https://anyorigin.com/go?url=${encodeURIComponent(url)}`,
+            (url) => `https://cors.bridged.cc/${url}`
         ];
         let currentProxyIdx = 0;
 
@@ -211,6 +231,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             loadImportedPlaylists();
             switchTab('sports'); // Render offline channels instantly for zero-delay startup
+            loadSavedGitHubSyncConfig(); // Check for GitHub Raw configuration
             await syncMasterDatabases(); // Quietly load external databases in background
         });
 
@@ -219,7 +240,7 @@
             // Step 1: Attempt direct fetch first for faster speeds
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 3500);
+                const timeout = setTimeout(() => controller.abort(), 2500);
                 const resp = await fetch(url, { signal: controller.signal, method: options.method || 'GET' });
                 clearTimeout(timeout);
                 if (resp.ok) return resp;
@@ -233,7 +254,7 @@
                 const proxied = CORS_PROXIES[i](url);
                 try {
                     const controller = new AbortController();
-                    const timeout = options.timeout || 6000;
+                    const timeout = options.timeout || 4000;
                     const timer = setTimeout(() => controller.abort(), timeout);
                     const resp = await fetch(proxied, { signal: controller.signal, method: options.method || 'GET', headers: options.headers || {} });
                     clearTimeout(timer);
@@ -245,14 +266,13 @@
                     }
                 } catch (err) {
                     lastErr = err;
-                    console.warn(`Proxy Node ${i} Offline for ${url}`);
                 }
             }
             throw lastErr || new Error("All proxy servers are offline");
         }
 
         // Quick latency checker for Smart Failover
-        async function checkStreamLatency(url, timeoutMs = 2000) {
+        async function checkStreamLatency(url, timeoutMs = 1500) {
             const start = performance.now();
             try {
                 const controller = new AbortController();
@@ -282,7 +302,7 @@
         async function probeAndOrderServers(urls, limit = 5) {
             const candidates = urls.slice(0, limit);
             const measurements = await Promise.all(candidates.map(async (u) => {
-                const ms = await checkStreamLatency(u, 2000).catch(() => Infinity);
+                const ms = await checkStreamLatency(u, 1500).catch(() => Infinity);
                 return { url: u, latency: ms };
             }));
             measurements.sort((a, b) => a.latency - b.latency);
@@ -325,12 +345,18 @@
             gridLoader.classList.remove('hidden');
             try {
                 // Fetch & parse Sports Matches Link
-                const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 7000 })).text();
+                const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 6000 })).text();
                 masterChannelDb.premium = parseM3uString(sportsRaw);
 
                 // Fetch & parse Premium Indian / Global Link
-                const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 7000 })).text();
+                const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 6000 })).text();
                 masterChannelDb.global = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
+
+                // If GitHub Auto-Sync is configured, fetch raw playlist data on startup
+                const githubUrl = document.getElementById('github-sync-url').value.trim();
+                if (githubUrl) {
+                    await syncGitHubPlaylists(githubUrl);
+                }
 
                 console.log("Databases Sync Successful!");
             } catch (err) {
@@ -338,6 +364,25 @@
             } finally {
                 gridLoader.classList.add('hidden');
                 if (activeTab !== 'sports') renderChannelsList();
+            }
+        }
+
+        // Fetch playlist raw data from custom GitHub URL
+        async function syncGitHubPlaylists(url) {
+            try {
+                const githubRaw = await (await fetchViaProxies(url, { timeout: 8000 })).text();
+                const githubChannels = parseM3uString(githubRaw);
+                if (githubChannels.length > 0) {
+                    githubChannels.forEach(ch => {
+                        ch.id = 'github-' + Math.random().toString(36).substr(2, 9);
+                        ch.group = ch.group || 'GitHub Sync';
+                    });
+                    masterChannelDb.imported = [...masterChannelDb.imported.filter(ch => !ch.id.startsWith('github-')), ...githubChannels];
+                    saveImportedPlaylists();
+                    console.log(`Synced ${githubChannels.length} channels from GitHub RAW Config`);
+                }
+            } catch(e) {
+                console.warn("GitHub Auto-Sync failed:", e);
             }
         }
 
@@ -426,6 +471,7 @@
         // Initialize streaming player with Advanced Failover and Fastest-server selection
         async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true }) {
             activeStreamTitle = title;
+            currentUrlRetryCount = 0; // Reset retries
 
             // Gather candidate channels of same group to build alternative server pool
             const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|source|\d+/g, '').trim() : '';
@@ -442,7 +488,7 @@
 
             activeStreamList = candidates;
 
-            // Perform rapid server latency latency check (Fastest Server Selection)
+            // Perform rapid server latency check (Fastest Server Selection)
             if (options.autoSelectFastest && activeStreamList.length > 1) {
                 spinner.classList.remove('hidden');
                 spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 5)} nodes for fastest connection...`;
@@ -482,6 +528,7 @@
                 btn.onclick = (ev) => {
                     ev.stopPropagation();
                     activeStreamIdx = idx;
+                    currentUrlRetryCount = 0; // Reset retries on manual click
                     renderServerButtons();
                     playSelectedSource({ autoplay: true });
                 };
@@ -493,6 +540,7 @@
             reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 transition font-bold';
             reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Node`;
             reloadBtn.onclick = () => {
+                currentUrlRetryCount = 0;
                 quickReloadPlayer();
             };
             container.appendChild(reloadBtn);
@@ -516,14 +564,17 @@
             const runHlsInstance = async (srcUrl) => {
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls({
-                        maxBufferLength: 8,              // Ultra-low buffers for immediate play
-                        maxMaxBufferLength: 15,
-                        backBufferLength: 4,
-                        liveSyncDurationCount: 2,         // Keep as close to real live as possible
-                        enableWorker: true,
-                        manifestLoadingTimeOut: 4500,     // Quick failover if stream is dead
-                        levelLoadingTimeOut: 4500,
-                        fragLoadingTimeOut: 6000
+                        maxBufferLength: 30,             // Buffering increased to 30 seconds for stable connection
+                        maxMaxBufferLength: 60,          // Maximum buffer of 60 seconds to buffer-out temporary drops
+                        backBufferLength: 15,            // Save 15 seconds of back buffer
+                        liveSyncDurationCount: 3,        
+                        enableWorker: true,              // Use web workers to prevent UI thread lag
+                        lowLatencyMode: false,           // Disabled Low Latency for High Traffic buffering safety
+                        manifestLoadingTimeOut: 10000,   // Wait 10 seconds for manifest load
+                        levelLoadingTimeOut: 10000,
+                        fragLoadingTimeOut: 15000,
+                        fragLoadingMaxRetry: 5,          // Retry fragments internally instead of immediately triggering failover
+                        manifestLoadingMaxRetry: 5
                     });
 
                     hlsInstance.loadSource(srcUrl);
@@ -538,7 +589,7 @@
                         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                             if (data && data.fatal && !ok) reject(data);
                         });
-                        setTimeout(() => { if(!ok) reject(new Error("Timeout")); }, 5000);
+                        setTimeout(() => { if(!ok) reject(new Error("Timeout")); }, 8000);
                     });
 
                     await playbackPromise;
@@ -558,10 +609,15 @@
                         if (data && data.fatal) {
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.warn("Mid-stream Network disconnect, initiating failover node...");
-                                    triggerAutoFailover();
+                                    console.warn("Fatal Network error encountered. Attempting dynamic recovery...");
+                                    hlsInstance.startLoad(); // Try to reload manifest internally first
+                                    currentUrlRetryCount++;
+                                    if (currentUrlRetryCount > MAX_RETRIES_PER_URL) {
+                                        triggerAutoFailover();
+                                    }
                                     break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
+                                    console.warn("Media error encountered. Attempting recovery...");
                                     hlsInstance.recoverMediaError();
                                     break;
                                 default:
@@ -579,7 +635,7 @@
                     const nativePromise = new Promise((resolve, reject) => {
                         video.addEventListener('canplay', resolve, { once: true });
                         video.addEventListener('error', reject, { once: true });
-                        setTimeout(reject, 5000);
+                        setTimeout(reject, 8000);
                     });
 
                     await nativePromise;
@@ -592,12 +648,12 @@
                 return false;
             };
 
-            // Attempt 1: Direct Fetch (Fastest)
+            // Attempt 1: Direct Fetch (Fastest & direct connection)
             try {
                 await runHlsInstance(liveUrl);
                 return;
             } catch (err) {
-                console.warn("Direct connection timeout. Routing through secure proxy...");
+                console.warn("Direct connection timeout. Routing through secure high-speed proxy...");
             }
 
             // Attempt 2: Route through proxies sequentially (Failover Proxies)
@@ -617,6 +673,20 @@
 
         // Trigger Auto Failover Switch (Auto switches Server if crashes)
         function triggerAutoFailover() {
+            const now = Date.now();
+            
+            // Anti-Looping Protection: Check if failover is triggered too frequently
+            if (now - lastFailoverTime < FAILOVER_COOLDOWN_MS) {
+                console.warn("Anti-Loop: Failover request throttled to prevent frequent reloading.");
+                setTimeout(() => {
+                    triggerAutoFailover();
+                }, FAILOVER_COOLDOWN_MS);
+                return;
+            }
+
+            lastFailoverTime = now;
+            currentUrlRetryCount = 0; // Reset retries
+
             if (activeStreamList.length > 1) {
                 activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
                 console.log(`Failsafe Activated: Switching to Backup Source ${activeStreamIdx + 1}`);
@@ -734,6 +804,28 @@
             masterChannelDb.imported = masterChannelDb.imported.filter(ch => ch.id !== id);
             saveImportedPlaylists();
             renderChannelsList();
+        }
+
+        // Save and Sync GitHub Config
+        function saveGitHubSyncConfig() {
+            const url = document.getElementById('github-sync-url').value.trim();
+            if (url) {
+                localStorage.setItem('sportsx_github_sync_url', url);
+                syncGitHubPlaylists(url).then(() => {
+                    alert("গিটহাব অটো-সিঙ্ক কনফিগারেশন সফলভাবে সেভ এবং সিঙ্ক হয়েছে!");
+                    if (activeTab === 'imported') renderChannelsList();
+                });
+            } else {
+                localStorage.removeItem('sportsx_github_sync_url');
+                alert("গিটহাব সিঙ্ক ইউআরএল মুছে ফেলা হয়েছে।");
+            }
+        }
+
+        function loadSavedGitHubSyncConfig() {
+            const savedUrl = localStorage.getItem('sportsx_github_sync_url');
+            if (savedUrl) {
+                document.getElementById('github-sync-url').value = savedUrl;
+            }
         }
 
         // UI Toggler helper
