@@ -18,6 +18,17 @@
         ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
         .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .btn-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
+        /* simple overlay for user-interaction autoplay fallback */
+        #autoplay-overlay {
+            position: absolute;
+            inset: 0;
+            display: none;
+            background: linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.8));
+            z-index: 60;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
@@ -41,7 +52,7 @@
                     <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
                 </span>
                 <input type="text" id="search-input" oninput="triggerSearch()" placeholder="চ্যানেল বা ম্যাচ খুঁজুন..." 
-                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-200">
+                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-100">
             </div>
         </div>
     </header>
@@ -52,6 +63,15 @@
         <!-- Custom Advanced Video Player -->
         <div class="glass-card rounded-2xl overflow-hidden shadow-2xl relative aspect-video group">
             <video id="main-player" class="w-full h-full object-contain" controls autoplay playsinline></video>
+            <!-- Autoplay fallback overlay -->
+            <div id="autoplay-overlay" class="hidden flex">
+                <div class="text-center">
+                    <p class="text-sm font-bold text-white mb-3">Tap to start playback</p>
+                    <button id="autoplay-start-btn" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">
+                        Start
+                    </button>
+                </div>
+            </div>
             <!-- Custom Dynamic Loader -->
             <div id="player-spinner" class="absolute inset-0 bg-slate-950/95 flex flex-col justify-center items-center hidden">
                 <div class="relative flex items-center justify-center mb-3">
@@ -84,9 +104,9 @@
             </div>
             
             <div id="importer-panel" class="space-y-2 hidden">
-                <input type="text" id="m3u-title" placeholder="প্লেলিস্টের নাম দিন (e.g., My BD TV Playlist)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-emerald-500">
+                <input type="text" id="m3u-title" placeholder="প্লেলিস্টের নাম দিন (e.g., My BD TV Playlist)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
                 <div class="flex gap-2">
-                    <input type="text" id="m3u-url" placeholder="Paste .m3u or .m3u8 Playlist URL..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-emerald-500">
+                    <input type="text" id="m3u-url" placeholder="Paste .m3u or .m3u8 Playlist URL..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
                     <button onclick="importOnlineM3UPlaylist()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">Import List</button>
                 </div>
             </div>
@@ -140,6 +160,8 @@
         const spinner = document.getElementById('player-spinner');
         const spinnerText = document.getElementById('player-spinner-text');
         const gridLoader = document.getElementById('grid-loader');
+        const autoplayOverlay = document.getElementById('autoplay-overlay');
+        const autoplayBtn = document.getElementById('autoplay-start-btn');
 
         let activeTab = 'sports';
         let searchQuery = '';
@@ -177,25 +199,95 @@
             loadImportedPlaylists();
             await syncMasterDatabases();
             switchTab('sports');
+
+            // Auto-play behavior: if there are channels available, auto-load the first one and find fastest server
+            try {
+                const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium, ...masterChannelDb.imported];
+                if (pool.length > 0) {
+                    // Prefer the active tab's top channel if exists
+                    let candidate = null;
+                    const tabList = {
+                        sports: masterChannelDb.sports,
+                        'bd-tv': masterChannelDb.bd_tv,
+                        premium: masterChannelDb.premium,
+                        imported: masterChannelDb.imported
+                    }[activeTab] || pool;
+
+                    if (tabList && tabList.length > 0) candidate = tabList[0];
+                    else candidate = pool[0];
+
+                    if (candidate) {
+                        // Load with fastest-server selection
+                        await loadSourceEngine(candidate.url, candidate.title, { autoSelectFastest: true, autoplay: true });
+                    }
+                }
+            } catch (e) {
+                console.warn("Auto-start failed", e);
+            }
         });
 
         // Bypassing browser-CORS blockages
-        async function fetchSourceContent(url) {
-            let lastError;
+        // A utility that tries available proxies and returns the first successful fetch Response
+        async function fetchViaProxies(url, options = {}) {
+            let lastErr = null;
             for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxied = CORS_PROXIES[i](url);
                 try {
-                    const proxyUrl = CORS_PROXIES[i](url);
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
+                    const controller = new AbortController();
+                    const timeout = options.timeout || 5000;
+                    const timer = setTimeout(() => controller.abort(), timeout);
+                    const resp = await fetch(proxied, { signal: controller.signal, method: options.method || 'GET', headers: options.headers || {} });
+                    clearTimeout(timer);
+                    if (resp.ok) {
                         currentProxyIdx = i;
-                        return await response.text();
+                        return resp;
+                    } else {
+                        lastErr = new Error(`Proxy ${i} returned ${resp.status}`);
                     }
-                } catch (e) {
-                    lastError = e;
-                    console.warn(`Proxy Node ${i} Failed. Rotating...`);
+                } catch (err) {
+                    lastErr = err;
+                    console.warn(`Proxy Node ${i} Failed for ${url}:`, err);
                 }
             }
-            throw lastError || new Error("All proxy servers are offline");
+            throw lastErr || new Error("All proxy servers are offline");
+        }
+
+        // Quick latency measurement: fetch the manifest via proxies with short timeout and measure time-to-first-byte
+        async function measureLatency(url, timeoutMs = 2500) {
+            const start = performance.now();
+            try {
+                const resp = await fetchViaProxies(url, { timeout: timeoutMs, method: 'GET' });
+                // If headers arrive, measure latency
+                if (resp) {
+                    const t = performance.now() - start;
+                    // Try to consume only a small chunk to be polite
+                    try {
+                        const reader = resp.body && resp.body.getReader && await resp.body.getReader();
+                        if (reader) {
+                            // Try to read one chunk but do not wait forever
+                            const readerController = new AbortController();
+                            const readTimeout = setTimeout(() => reader.cancel(), 500);
+                            const result = await reader.read().catch(() => null);
+                            clearTimeout(readTimeout);
+                        }
+                    } catch (e) { /* ignore stream read errors */ }
+                    return Math.max(1, Math.round(t)); // ms
+                }
+            } catch (err) {
+                return Infinity; // unreachable/failed
+            }
+            return Infinity;
+        }
+
+        // Probe a list of URLs (limited to first N to save time) and return them sorted by measured latency
+        async function probeAndSort(urls, limit = 6) {
+            const candidates = urls.slice(0, limit);
+            const measurements = await Promise.all(candidates.map(async (u) => {
+                const ms = await measureLatency(u, 2500).catch(() => Infinity);
+                return { url: u, latency: ms };
+            }));
+            measurements.sort((a, b) => a.latency - b.latency);
+            return measurements.map(m => m.url);
         }
 
         // Custom M3U Parser logic supporting Channel Grouping, logos
@@ -220,7 +312,7 @@
                     // Channel Title
                     const lastComma = line.lastIndexOf(',');
                     current.title = lastComma !== -1 ? line.substring(lastComma + 1).trim() : 'Unnamed Channel';
-                } else if (line.startsWith('http') && current) {
+                } else if ((line.startsWith('http') || line.startsWith('https')) && current) {
                     current.url = line;
                     channels.push(current);
                     current = null;
@@ -234,15 +326,15 @@
             gridLoader.classList.remove('hidden');
             try {
                 // Fetch & parse BD TV Link
-                const bdRaw = await fetchSourceContent(DYNAMIC_SOURCES.bd_scraped);
+                const bdRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.bd_scraped, { timeout: 7000 })).text();
                 masterChannelDb.bd_tv = parseM3uString(bdRaw);
 
                 // Fetch & parse Sports Matches Link
-                const sportsRaw = await fetchSourceContent(DYNAMIC_SOURCES.sports_scraped);
+                const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 7000 })).text();
                 masterChannelDb.sports = parseM3uString(sportsRaw);
 
                 // Fetch & parse Premium Indian / Global Link
-                const premiumRaw = await fetchSourceContent(DYNAMIC_SOURCES.premium_scraped);
+                const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 7000 })).text();
                 masterChannelDb.premium = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
 
                 console.log("Databases Sync Successful!");
@@ -323,7 +415,7 @@
                      </div>`;
 
                 card.innerHTML = `
-                    <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}')">
+                    <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}', {autoSelectFastest: true, autoplay: true})">
                         ${logoHtml}
                         <div class="truncate">
                             <h4 class="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition truncate">${ch.title}</h4>
@@ -340,29 +432,59 @@
             });
         }
 
-        // Initialize streaming player with Advanced Failover
-        function loadSourceEngine(url, title) {
+        // Initialize streaming player with Advanced Failover and Fastest-server selection
+        async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true }) {
             activeStreamTitle = title;
-            activeStreamList = [url];
-            activeStreamIdx = 0;
 
-            // SportsX Feature: Dynamically fetch identical streams for auto server backup
-            const cleanTitle = title.toLowerCase().replace(/live|hd|server|src|\d+/g, '').trim();
-            const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium];
+            // Build candidate pool: include other channels with similar title to increase chance of same stream on different nodes
+            const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|\d+/g, '').trim() : '';
+            const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium, ...masterChannelDb.imported];
+            const candidates = [url];
+
+            // gather matching URLs (avoid duplicates)
             pool.forEach(ch => {
-                if (ch.url !== url && ch.title.toLowerCase().includes(cleanTitle)) {
-                    activeStreamList.push(ch.url);
+                if (ch.url && !candidates.includes(ch.url)) {
+                    if (cleanTitle && ch.title && ch.title.toLowerCase().includes(cleanTitle)) {
+                        candidates.push(ch.url);
+                    }
                 }
             });
 
+            // also include a raw fallback of the given URL (so guaranteed at least one)
+            activeStreamList = candidates;
+
+            // Auto-select fastest by probing (only if option set)
+            if (options.autoSelectFastest && activeStreamList.length > 1) {
+                spinner.classList.remove('hidden');
+                spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 6)} servers for fastest node...`;
+                try {
+                    const sorted = await probeAndSort(activeStreamList, 6);
+                    // Put fastest first; keep all others as fallback
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                } catch (e) {
+                    console.warn("Probing failed, using original order", e);
+                } finally {
+                    spinner.classList.add('hidden');
+                }
+            }
+
+            // start on best candidate
+            activeStreamIdx = 0;
             renderServerButtons();
-            playSelectedSource();
+
+            // attempt play
+            playSelectedSource({ autoplay: options.autoplay });
         }
 
         // Render Server Buttons underneath Video Player (Multi-source Panel)
         function renderServerButtons() {
             const container = document.getElementById('servers-container');
             container.innerHTML = '';
+
+            if (!activeStreamList || activeStreamList.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-600 font-mono">No active channel selected</span>`;
+                return;
+            }
 
             activeStreamList.forEach((src, idx) => {
                 const btn = document.createElement('button');
@@ -372,84 +494,215 @@
                     'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700'
                 }`;
                 btn.innerHTML = `<i class="fa-solid fa-play text-[8px] mr-1"></i> Server ${idx + 1}`;
-                btn.onclick = () => {
+                btn.onclick = async (ev) => {
+                    ev.stopPropagation();
                     activeStreamIdx = idx;
                     renderServerButtons();
-                    playSelectedSource();
+                    await playSelectedSource({ autoplay: true, forceProbe: false });
                 };
                 container.appendChild(btn);
             });
+
+            // add a quick reload button
+            const reloadBtn = document.createElement('button');
+            reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 ml-2';
+            reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Player`;
+            reloadBtn.onclick = () => {
+                quickReloadPlayer();
+            };
+            container.appendChild(reloadBtn);
         }
 
         // Play Selected Video Node
-        function playSelectedSource() {
-            if (activeStreamList.length === 0) return;
-            const liveUrl = activeStreamList[activeStreamIdx];
+        async function playSelectedSource(opts = { autoplay: true, forceProbe: false }) {
+            if (!activeStreamList || activeStreamList.length === 0) return;
+            let liveUrl = activeStreamList[activeStreamIdx];
 
+            // If URL is raw and might be blocked, use currently selected proxy wrapper if necessary
+            // But Hls can handle remote m3u8 directly. We will attempt direct and fallback to proxies on failure.
             // Trigger Loader Spinner
             spinner.classList.remove('hidden');
-            spinnerText.textContent = `Resolving Node: Server ${activeStreamIdx + 1}...`;
+            spinnerText.textContent = `Connecting: Server ${activeStreamIdx + 1}...`;
 
+            // Destroy previous instance quickly
             if (hlsInstance) {
-                hlsInstance.destroy();
+                try { hlsInstance.stopLoad(); } catch(e){}
+                try { hlsInstance.destroy(); } catch(e){}
                 hlsInstance = null;
             }
 
-            if (Hls.isSupported()) {
-                hlsInstance = new Hls({
-                    maxBufferLength: 45,
-                    enableWorker: true
-                });
-                hlsInstance.loadSource(liveUrl);
-                hlsInstance.attachMedia(video);
-                
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                    spinner.classList.add('hidden');
-                    video.play().catch(err => console.log("Direct autoplay blocked, waiting interaction: ", err));
-                });
+            // If the URL looks proxied already (starts with https://api.allorigins.win or corsproxy), skip probe
+            const isProxied = CORS_PROXIES.some(pf => pf('x').startsWith(liveUrl.substring(0, 10)));
 
-                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.warn("Primary channel failed, initiating AI auto failover...");
-                                triggerAutoFailover();
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                hlsInstance.recoverMediaError();
-                                break;
-                            default:
-                                triggerAutoFailover();
-                                break;
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // For Apple Safari
-                video.src = liveUrl;
-                video.addEventListener('canplay', () => {
-                    spinner.classList.add('hidden');
-                    video.play();
-                });
-                video.addEventListener('error', () => {
-                    triggerAutoFailover();
-                });
+            // If the chosen candidate is slow and we haven't forced a probe, try reordering again quickly (cheap)
+            if (!opts.forceProbe && activeStreamList.length > 1) {
+                // probe top 3 to ensure the chosen one is still fastest
+                try {
+                    const sorted = await probeAndSort(activeStreamList.slice(0, 4), 4);
+                    // move fastest to top
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                    activeStreamIdx = 0;
+                    liveUrl = activeStreamList[activeStreamIdx];
+                    renderServerButtons();
+                } catch (e) {
+                    // ignore probe errors
+                }
             }
+
+            // Attempt playback with HLS.js when supported
+            const tryHlsPlayback = async (src) => {
+                if (Hls.isSupported()) {
+                    hlsInstance = new Hls({
+                        maxBufferLength: 22,
+                        enableWorker: true,
+                        liveSyncDurationCount: 3,
+                        manifestLoadingTimeOut: 8000,
+                        xhrSetup: function(xhr, url) {
+                            // set short connection timeouts if needed
+                            xhr.timeout = 8000;
+                        }
+                    });
+                    hlsInstance.loadSource(src);
+                    hlsInstance.attachMedia(video);
+
+                    let manifestParsed = false;
+                    const manifestPromise = new Promise((resolve, reject) => {
+                        const onManifest = () => {
+                            manifestParsed = true;
+                            resolve();
+                        };
+                        const onError = (event, data) => {
+                            if (data && data.fatal) {
+                                if (!manifestParsed) reject(data);
+                            }
+                        };
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, onManifest);
+                        hlsInstance.on(Hls.Events.ERROR, onError);
+
+                        // safety timeout
+                        setTimeout(() => {
+                            if (!manifestParsed) reject(new Error('manifest timed out'));
+                        }, 8000);
+                    });
+
+                    try {
+                        await manifestPromise;
+                        spinner.classList.add('hidden');
+                        // Attempt autoplay; if blocked show overlay for user interaction
+                        if (opts.autoplay) {
+                            try {
+                                await video.play();
+                                hideAutoplayOverlay();
+                            } catch (err) {
+                                // autoplay blocked -> show overlay
+                                showAutoplayOverlay();
+                                console.warn("Autoplay blocked; waiting user gesture");
+                            }
+                        }
+                        // recover media errors automatically
+                        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+                            if (data && data.fatal) {
+                                switch (data.type) {
+                                    case Hls.ErrorTypes.NETWORK_ERROR:
+                                        console.warn("Network error - failover triggered", data);
+                                        triggerAutoFailover();
+                                        break;
+                                    case Hls.ErrorTypes.MEDIA_ERROR:
+                                        hlsInstance.recoverMediaError();
+                                        break;
+                                    default:
+                                        triggerAutoFailover();
+                                        break;
+                                }
+                            }
+                        });
+                        return true;
+                    } catch (err) {
+                        try { hlsInstance.destroy(); } catch(e) {}
+                        hlsInstance = null;
+                        throw err;
+                    }
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Safari native HLS
+                    video.src = src;
+                    video.load();
+                    video.addEventListener('canplay', () => {
+                        spinner.classList.add('hidden');
+                        if (opts.autoplay) {
+                            video.play().catch(() => showAutoplayOverlay());
+                        }
+                    }, { once: true });
+
+                    video.addEventListener('error', () => {
+                        triggerAutoFailover();
+                    }, { once: true });
+                    return true;
+                }
+                return false;
+            };
+
+            // Try direct HLS playback first
+            try {
+                await tryHlsPlayback(liveUrl);
+                return;
+            } catch (err) {
+                console.warn("Direct playback failed, trying via proxies...", err);
+            }
+
+            // If direct playback failed, try wrapped proxies in order (rotate proxies)
+            const proxiesToTry = CORS_PROXIES.map(p => p(liveUrl));
+            for (let proxyUrl of proxiesToTry) {
+                spinnerText.textContent = `Trying proxy node...`;
+                try {
+                    await tryHlsPlayback(proxyUrl);
+                    return;
+                } catch (err) {
+                    console.warn("Proxy playback failed for", proxyUrl, err);
+                }
+            }
+
+            // If we've reached here, all attempts failed — final failover
+            spinnerText.textContent = `All attempts failed. Trying fallback...`;
+            triggerAutoFailover();
         }
 
         // Trigger Auto Failover Switch (Auto switches Server if crashes)
-        function triggerAutoFailover() {
+        async function triggerAutoFailover() {
+            // If there are other streams, pick the next fastest one
             if (activeStreamList.length > 1) {
                 activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
                 console.log(`Fallback triggered. Switching to Server Node ${activeStreamIdx + 1}`);
                 renderServerButtons();
-                playSelectedSource();
+                playSelectedSource({ autoplay: true, forceProbe: true });
             } else {
-                // Rotate proxy and reload
+                // Rotate proxy and retry
                 currentProxyIdx = (currentProxyIdx + 1) % CORS_PROXIES.length;
-                console.log(`No back-up links found. Rotating proxy engine and retrying...`);
-                activeStreamList[0] = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
-                playSelectedSource();
+                const proxied = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
+                activeStreamList[0] = proxied;
+                console.log(`No second link. Rotating proxy and retrying...`);
+                renderServerButtons();
+                playSelectedSource({ autoplay: true, forceProbe: true });
+            }
+        }
+
+        // Quick reload player function (keeps same index but re-probes quickly)
+        async function quickReloadPlayer() {
+            spinner.classList.remove('hidden');
+            spinnerText.textContent = 'Quick reloading...';
+            try {
+                // quick probe top candidates and reorder
+                if (activeStreamList.length > 1) {
+                    const sorted = await probeAndSort(activeStreamList.slice(0, 4), 4);
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                    activeStreamIdx = 0;
+                }
+                renderServerButtons();
+                await playSelectedSource({ autoplay: true, forceProbe: true });
+            } catch (e) {
+                console.warn("Quick reload failed", e);
+                triggerAutoFailover();
+            } finally {
+                spinner.classList.add('hidden');
             }
         }
 
@@ -468,7 +721,7 @@
 
             try {
                 gridLoader.classList.remove('hidden');
-                const rawM3u = await fetchSourceContent(url);
+                const rawM3u = await (await fetchViaProxies(url, { timeout: 8000 })).text();
                 const parsedChannels = parseM3uString(rawM3u);
 
                 if (parsedChannels.length === 0) {
@@ -492,7 +745,7 @@
 
                 alert(`সফলভাবে ${parsedChannels.length}টি চ্যানেল ইম্পোর্ট করা হয়েছে!`);
             } catch (err) {
-                alert("প্লেলিস্ট ফাইলটি লোড করতে ব্যর্থ হয়েছে। লিংকটি সচল এবং CORS ফ্রী কিনা তা নিশ্চিত করুন।");
+                alert("প্লেলিস্ট ফাইলটি লোড করতে ব্যর্থ হয়েছে। লিংকটি সচল এবং CORS ফ্রী কিনা চেক করুন।");
                 console.error(err);
             } finally {
                 gridLoader.classList.add('hidden');
@@ -524,6 +777,38 @@
                 el.classList.add('hidden');
             }
         }
+
+        // Autoplay overlay handling
+        function showAutoplayOverlay() {
+            if (autoplayOverlay) {
+                autoplayOverlay.style.display = 'flex';
+                autoplayOverlay.classList.remove('hidden');
+                autoplayBtn.onclick = async () => {
+                    try {
+                        await video.play();
+                        hideAutoplayOverlay();
+                    } catch (err) {
+                        console.warn("User-initiated play failed", err);
+                    }
+                };
+            }
+        }
+        function hideAutoplayOverlay() {
+            if (autoplayOverlay) {
+                autoplayOverlay.style.display = 'none';
+                autoplayOverlay.classList.add('hidden');
+            }
+        }
+
+        // Listen for network connectivity changes to try quick reconnect
+        window.addEventListener('online', () => {
+            console.log('Network back online — quick reload player');
+            quickReloadPlayer();
+        });
+
+        // Expose a debug function
+        window._sportsx_quick_reload = quickReloadPlayer;
+
     </script>
 </body>
 </html>
