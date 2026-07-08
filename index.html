@@ -8,22 +8,21 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for Pro Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- HLS.js Library for M3U8 Playback -->
+    <!-- Optimized HLS.js Library for M3U8 Playback -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
         ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
-        .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glass-card { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .btn-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        /* simple overlay for user-interaction autoplay fallback */
         #autoplay-overlay {
             position: absolute;
             inset: 0;
             display: none;
-            background: linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.8));
+            background: linear-gradient(180deg, rgba(2,6,23,0.7), rgba(2,6,23,0.9));
             z-index: 60;
             align-items: center;
             justify-content: center;
@@ -38,11 +37,11 @@
         <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex items-center space-x-3">
                 <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
-                    <i class="fa-solid fa-bolt text-lg"></i>
+                    <i class="fa-solid fa-bolt-lightning text-lg animate-pulse"></i>
                 </div>
                 <div>
                     <h1 class="font-extrabold text-base tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SPORTSX PRO</h1>
-                    <span class="text-[9px] text-slate-400 font-mono block">All-Source Multi-Engine IPTV Player</span>
+                    <span class="text-[9px] text-slate-400 font-mono block">AI-Optimized Zero-Lag Streaming Protocol</span>
                 </div>
             </div>
             
@@ -66,19 +65,19 @@
             <!-- Autoplay fallback overlay -->
             <div id="autoplay-overlay" class="hidden flex">
                 <div class="text-center">
-                    <p class="text-sm font-bold text-white mb-3">Tap to start playback</p>
-                    <button id="autoplay-start-btn" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">
-                        Start
+                    <p class="text-sm font-bold text-white mb-3">ট্যাপ করে লাইভ স্ট্রিমিং চালু করুন</p>
+                    <button id="autoplay-start-btn" class="btn-gradient text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">
+                        <i class="fa-solid fa-play mr-1.5"></i> Play Live
                     </button>
                 </div>
             </div>
             <!-- Custom Dynamic Loader -->
             <div id="player-spinner" class="absolute inset-0 bg-slate-950/95 flex flex-col justify-center items-center hidden">
                 <div class="relative flex items-center justify-center mb-3">
-                    <div class="animate-spin rounded-full h-10 w-10 border-2 border-emerald-500 border-t-transparent"></div>
-                    <i class="fa-solid fa-play text-xs text-emerald-400 absolute"></i>
+                    <div class="animate-spin rounded-full h-11 w-11 border-2 border-emerald-500 border-t-transparent"></div>
+                    <i class="fa-solid fa-satellite-dish text-xs text-emerald-400 absolute animate-pulse"></i>
                 </div>
-                <span id="player-spinner-text" class="text-xs text-slate-400 font-mono">Resolving Streaming Node...</span>
+                <span id="player-spinner-text" class="text-xs text-slate-400 font-mono">Resolving Fast Connection...</span>
             </div>
         </div>
 
@@ -93,21 +92,24 @@
             </div>
         </div>
 
-        <!-- M3U Playlist URL Importer (SportsX Future App Style) -->
+        <!-- M3U Playlist & Single Channel Importer -->
         <section class="glass-card rounded-2xl p-4 space-y-3">
-            <div class="flex justify-between items-center" onclick="toggleElement('importer-panel')">
-                <h3 class="text-xs font-bold text-slate-300 flex items-center cursor-pointer">
-                    <i class="fa-solid fa-cloud-arrow-down text-emerald-400 mr-2"></i> M3U Playlist Importer (IPTV Link)
+            <div class="flex justify-between items-center cursor-pointer" onclick="toggleElement('importer-panel')">
+                <h3 class="text-xs font-bold text-slate-300 flex items-center">
+                    <i class="fa-solid fa-plus-minus text-emerald-400 mr-2"></i> Add Stream (Single URL / M3U Playlist)
                     <i class="fa-solid fa-caret-down ml-2 text-[10px] text-slate-500"></i>
                 </h3>
-                <span class="text-[10px] text-slate-500 font-mono">Auto Group Parsing Enabled</span>
+                <span class="text-[10px] text-slate-500 font-mono">Local Storage Sync</span>
             </div>
             
-            <div id="importer-panel" class="space-y-2 hidden">
-                <input type="text" id="m3u-title" placeholder="প্লেলিস্টের নাম দিন (e.g., My BD TV Playlist)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+            <div id="importer-panel" class="space-y-3 hidden transition-all">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input type="text" id="m3u-title" placeholder="Stream / Channel Title" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                    <input type="text" id="m3u-category" placeholder="Category (e.g. Sports, News)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                </div>
                 <div class="flex gap-2">
-                    <input type="text" id="m3u-url" placeholder="Paste .m3u or .m3u8 Playlist URL..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
-                    <button onclick="importOnlineM3UPlaylist()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">Import List</button>
+                    <input type="text" id="m3u-url" placeholder="Paste .m3u8 Playlist or Single Streaming Link..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                    <button onclick="importChannelData()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">Add Stream</button>
                 </div>
             </div>
         </section>
@@ -115,16 +117,16 @@
         <!-- Dynamic Category Navigation Tabs -->
         <div class="flex border-b border-slate-800 text-xs font-semibold overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
             <button onclick="switchTab('sports')" id="tab-sports" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
-                <i class="fa-solid fa-trophy mr-1"></i> Live Matches
-            </button>
-            <button onclick="switchTab('bd-tv')" id="tab-bd-tv" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
-                <i class="fa-solid fa-circle-play mr-1"></i> BD Channels
+                <i class="fa-solid fa-circle-play mr-1"></i> BD Sports & TV
             </button>
             <button onclick="switchTab('premium')" id="tab-premium" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
-                <i class="fa-solid fa-gem mr-1"></i> Indian Premium
+                <i class="fa-solid fa-gem mr-1"></i> Dynamic Events
+            </button>
+            <button onclick="switchTab('global')" id="tab-global" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-globe mr-1"></i> Global Live
             </button>
             <button onclick="switchTab('imported')" id="tab-imported" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
-                <i class="fa-solid fa-folder-open mr-1"></i> Imported IPTV
+                <i class="fa-solid fa-folder-open mr-1"></i> Saved / Imported
             </button>
         </div>
 
@@ -137,7 +139,7 @@
             <!-- Global Grid Loading Progress Bar -->
             <div id="grid-loader" class="flex flex-col items-center justify-center py-20 hidden">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
-                <p class="text-xs text-slate-500 mt-2 font-mono">Crawling Multi-Source Repositories...</p>
+                <p class="text-xs text-slate-500 mt-2 font-mono">Fetching High Speed Channels...</p>
             </div>
         </section>
 
@@ -166,19 +168,30 @@
         let activeTab = 'sports';
         let searchQuery = '';
         let hlsInstance = null;
+
+        // Static Pre-configured Premium BD Streams with logos
+        const PRE_CONFIGURED_BD = [
+            { id: 'bd-tsports-1', title: 'T Sports Live HD (Server 1)', url: 'https://stream.sunplex.live/T-SPORTS/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg' },
+            { id: 'bd-tsports-2', title: 'T Sports Live (Server 2)', url: 'https://tvsen7.aynaott.com/tsportsfhd/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg' },
+            { id: 'bd-gtv', title: 'Gazi TV (GTV) HD Live', url: 'https://stream.sunplex.live/GAZI-TV/index.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/gazi-tv.jpg' },
+            { id: 'bd-btv', title: 'BTV World Live', url: 'http://38.96.178.201:80/live/BTV/index.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/btv.jpg' },
+            { id: 'bd-somoy', title: 'Somoy News TV HD', url: 'https://bozztv.com/rongo/rongo-somoy/index.m3u8', group: 'BD TV', logo: 'https://i.imgur.com/18m3T6f.jpg' },
+            { id: 'bd-jamuna', title: 'Jamuna TV HD', url: 'https://edge01.iptv.digijadoo.net/live/jamuna_tv/chunks.m3u8', group: 'BD TV', logo: 'https://i.imgur.com/ySyvc3o.jpg' },
+            { id: 'bd-duronto', title: 'Duronto TV (Kids)', url: 'https://tvsen4.aynaott.com/durontotv/index.m3u8', group: 'BD TV', logo: 'https://upload.wikimedia.org/wikipedia/en/d/d7/Duronto_TV_Logo.png' },
+            { id: 'bd-ekushey', title: 'Ekushey TV Live', url: 'https://ekusheyserver.com/etvlivesn.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/ekushey-tv.jpg' }
+        ];
         
         // Multi-Source Playlist Repositories
         const DYNAMIC_SOURCES = {
             sports_scraped: 'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u',
-            bd_scraped: 'https://raw.githubusercontent.com/imShakil/tvlink/refs/heads/main/iptv.m3u8',
             premium_scraped: 'https://iptv-org.github.io/iptv/categories/sports.m3u'
         };
 
         // Channel Memory Array
         let masterChannelDb = {
-            sports: [],
-            bd_tv: [],
+            sports: PRE_CONFIGURED_BD,
             premium: [],
+            global: [],
             imported: []
         };
 
@@ -197,44 +210,30 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             loadImportedPlaylists();
-            await syncMasterDatabases();
-            switchTab('sports');
-
-            // Auto-play behavior: if there are channels available, auto-load the first one and find fastest server
-            try {
-                const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium, ...masterChannelDb.imported];
-                if (pool.length > 0) {
-                    // Prefer the active tab's top channel if exists
-                    let candidate = null;
-                    const tabList = {
-                        sports: masterChannelDb.sports,
-                        'bd-tv': masterChannelDb.bd_tv,
-                        premium: masterChannelDb.premium,
-                        imported: masterChannelDb.imported
-                    }[activeTab] || pool;
-
-                    if (tabList && tabList.length > 0) candidate = tabList[0];
-                    else candidate = pool[0];
-
-                    if (candidate) {
-                        // Load with fastest-server selection
-                        await loadSourceEngine(candidate.url, candidate.title, { autoSelectFastest: true, autoplay: true });
-                    }
-                }
-            } catch (e) {
-                console.warn("Auto-start failed", e);
-            }
+            switchTab('sports'); // Render offline channels instantly for zero-delay startup
+            await syncMasterDatabases(); // Quietly load external databases in background
         });
 
-        // Bypassing browser-CORS blockages
-        // A utility that tries available proxies and returns the first successful fetch Response
+        // Bypassing browser-CORS blockages with Direct-First support
         async function fetchViaProxies(url, options = {}) {
+            // Step 1: Attempt direct fetch first for faster speeds
+            try {
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 3500);
+                const resp = await fetch(url, { signal: controller.signal, method: options.method || 'GET' });
+                clearTimeout(timeout);
+                if (resp.ok) return resp;
+            } catch (e) {
+                console.warn("Direct connection refused, resolving via backup proxies...");
+            }
+
+            // Step 2: Fallback to proxy nodes sequentially
             let lastErr = null;
             for (let i = 0; i < CORS_PROXIES.length; i++) {
                 const proxied = CORS_PROXIES[i](url);
                 try {
                     const controller = new AbortController();
-                    const timeout = options.timeout || 5000;
+                    const timeout = options.timeout || 6000;
                     const timer = setTimeout(() => controller.abort(), timeout);
                     const resp = await fetch(proxied, { signal: controller.signal, method: options.method || 'GET', headers: options.headers || {} });
                     clearTimeout(timer);
@@ -242,48 +241,48 @@
                         currentProxyIdx = i;
                         return resp;
                     } else {
-                        lastErr = new Error(`Proxy ${i} returned ${resp.status}`);
+                        lastErr = new Error(`Proxy ${i} returned status ${resp.status}`);
                     }
                 } catch (err) {
                     lastErr = err;
-                    console.warn(`Proxy Node ${i} Failed for ${url}:`, err);
+                    console.warn(`Proxy Node ${i} Offline for ${url}`);
                 }
             }
             throw lastErr || new Error("All proxy servers are offline");
         }
 
-        // Quick latency measurement: fetch the manifest via proxies with short timeout and measure time-to-first-byte
-        async function measureLatency(url, timeoutMs = 2500) {
+        // Quick latency checker for Smart Failover
+        async function checkStreamLatency(url, timeoutMs = 2000) {
             const start = performance.now();
             try {
-                const resp = await fetchViaProxies(url, { timeout: timeoutMs, method: 'GET' });
-                // If headers arrive, measure latency
-                if (resp) {
-                    const t = performance.now() - start;
-                    // Try to consume only a small chunk to be polite
-                    try {
-                        const reader = resp.body && resp.body.getReader && await resp.body.getReader();
-                        if (reader) {
-                            // Try to read one chunk but do not wait forever
-                            const readerController = new AbortController();
-                            const readTimeout = setTimeout(() => reader.cancel(), 500);
-                            const result = await reader.read().catch(() => null);
-                            clearTimeout(readTimeout);
-                        }
-                    } catch (e) { /* ignore stream read errors */ }
-                    return Math.max(1, Math.round(t)); // ms
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), timeoutMs);
+                const resp = await fetch(url, { method: 'HEAD', signal: controller.signal });
+                clearTimeout(timeout);
+                if (resp.ok) {
+                    return Math.max(1, Math.round(performance.now() - start));
                 }
             } catch (err) {
-                return Infinity; // unreachable/failed
+                // If HEAD fails, try a fast GET proxy ping
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+                    const proxiedUrl = CORS_PROXIES[0](url);
+                    const resp = await fetch(proxiedUrl, { method: 'GET', signal: controller.signal });
+                    clearTimeout(timeout);
+                    if (resp.ok) {
+                        return Math.max(1, Math.round(performance.now() - start));
+                    }
+                } catch(e) {}
             }
             return Infinity;
         }
 
-        // Probe a list of URLs (limited to first N to save time) and return them sorted by measured latency
-        async function probeAndSort(urls, limit = 6) {
+        // Auto probe and prioritize fastest active servers
+        async function probeAndOrderServers(urls, limit = 5) {
             const candidates = urls.slice(0, limit);
             const measurements = await Promise.all(candidates.map(async (u) => {
-                const ms = await measureLatency(u, 2500).catch(() => Infinity);
+                const ms = await checkStreamLatency(u, 2000).catch(() => Infinity);
                 return { url: u, latency: ms };
             }));
             measurements.sort((a, b) => a.latency - b.latency);
@@ -325,32 +324,20 @@
         async function syncMasterDatabases() {
             gridLoader.classList.remove('hidden');
             try {
-                // Fetch & parse BD TV Link
-                const bdRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.bd_scraped, { timeout: 7000 })).text();
-                masterChannelDb.bd_tv = parseM3uString(bdRaw);
-
                 // Fetch & parse Sports Matches Link
                 const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 7000 })).text();
-                masterChannelDb.sports = parseM3uString(sportsRaw);
+                masterChannelDb.premium = parseM3uString(sportsRaw);
 
                 // Fetch & parse Premium Indian / Global Link
                 const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 7000 })).text();
-                masterChannelDb.premium = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
+                masterChannelDb.global = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
 
                 console.log("Databases Sync Successful!");
             } catch (err) {
                 console.error("Master Sync failed. Falling back to default servers...", err);
-                // Fallback hardcoded servers if networks fail
-                masterChannelDb.sports = [
-                    { title: "T Sports Live (Source 1)", url: "https://stream.sunplex.live/T-SPORTS/index.m3u8", logo: "" },
-                    { title: "T Sports HD (Source 2)", url: "https://tvsen7.aynaott.com/tsportsfhd/index.m3u8", logo: "" }
-                ];
-                masterChannelDb.bd_tv = [
-                    { title: "Gazi TV Live HD", url: "https://stream.sunplex.live/GAZI-TV/index.m3u8", logo: "" },
-                    { title: "BTV World Live", url: "http://38.96.178.201:80/live/BTV/index.m3u8", logo: "" }
-                ];
             } finally {
                 gridLoader.classList.add('hidden');
+                if (activeTab !== 'sports') renderChannelsList();
             }
         }
 
@@ -377,6 +364,12 @@
             renderChannelsList();
         }
 
+        // Custom initials svg builder in case image urls are offline or blocked
+        function getSvgInitialsLogo(text) {
+            const initials = text ? text.trim().substring(0, 2).toUpperCase() : 'TV';
+            return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="100%" height="100%" fill="%230f172a"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" fill="%2310b981">${initials}</text></svg>`;
+        }
+
         // Render UI Cards on screen
         function renderChannelsList() {
             const grid = document.getElementById('channels-grid');
@@ -384,8 +377,8 @@
 
             let sourceList = [];
             if (activeTab === 'sports') sourceList = masterChannelDb.sports;
-            else if (activeTab === 'bd-tv') sourceList = masterChannelDb.bd_tv;
             else if (activeTab === 'premium') sourceList = masterChannelDb.premium;
+            else if (activeTab === 'global') sourceList = masterChannelDb.global;
             else if (activeTab === 'imported') sourceList = masterChannelDb.imported;
 
             // Apply Search Filtering
@@ -407,12 +400,10 @@
                 const card = document.createElement('div');
                 card.className = 'glass-card rounded-xl p-3 flex items-center justify-between hover:border-emerald-500/30 hover:bg-slate-900/40 transition duration-300 group cursor-pointer';
                 
-                // Build Channel logo
+                const initialsFallback = getSvgInitialsLogo(ch.title);
                 const logoHtml = ch.logo ? 
-                    `<img src="${ch.logo}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1" onerror="this.src='https://placehold.co/40x40/0f172a/10b981?text=TV'">` :
-                    `<div class="w-10 h-10 bg-slate-950 rounded-lg flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition duration-300">
-                        <i class="fa-solid fa-play text-xs"></i>
-                     </div>`;
+                    `<img src="${ch.logo}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1" onerror="this.onerror=null; this.src='${initialsFallback}';">` :
+                    `<img src="${initialsFallback}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1">`;
 
                 card.innerHTML = `
                     <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}', {autoSelectFastest: true, autoplay: true})">
@@ -436,12 +427,11 @@
         async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true }) {
             activeStreamTitle = title;
 
-            // Build candidate pool: include other channels with similar title to increase chance of same stream on different nodes
-            const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|\d+/g, '').trim() : '';
-            const pool = [...masterChannelDb.sports, ...masterChannelDb.bd_tv, ...masterChannelDb.premium, ...masterChannelDb.imported];
+            // Gather candidate channels of same group to build alternative server pool
+            const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|source|\d+/g, '').trim() : '';
+            const pool = [...masterChannelDb.sports, ...masterChannelDb.premium, ...masterChannelDb.global, ...masterChannelDb.imported];
             const candidates = [url];
 
-            // gather matching URLs (avoid duplicates)
             pool.forEach(ch => {
                 if (ch.url && !candidates.includes(ch.url)) {
                     if (cleanTitle && ch.title && ch.title.toLowerCase().includes(cleanTitle)) {
@@ -450,29 +440,24 @@
                 }
             });
 
-            // also include a raw fallback of the given URL (so guaranteed at least one)
             activeStreamList = candidates;
 
-            // Auto-select fastest by probing (only if option set)
+            // Perform rapid server latency latency check (Fastest Server Selection)
             if (options.autoSelectFastest && activeStreamList.length > 1) {
                 spinner.classList.remove('hidden');
-                spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 6)} servers for fastest node...`;
+                spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 5)} nodes for fastest connection...`;
                 try {
-                    const sorted = await probeAndSort(activeStreamList, 6);
-                    // Put fastest first; keep all others as fallback
+                    const sorted = await probeAndOrderServers(activeStreamList, 5);
                     activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
                 } catch (e) {
-                    console.warn("Probing failed, using original order", e);
+                    console.warn("Server probing failed, using default playlist index.");
                 } finally {
                     spinner.classList.add('hidden');
                 }
             }
 
-            // start on best candidate
             activeStreamIdx = 0;
             renderServerButtons();
-
-            // attempt play
             playSelectedSource({ autoplay: options.autoplay });
         }
 
@@ -493,20 +478,20 @@
                     'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md shadow-emerald-500/15' : 
                     'bg-slate-950/80 text-slate-300 border-slate-800 hover:border-slate-700'
                 }`;
-                btn.innerHTML = `<i class="fa-solid fa-play text-[8px] mr-1"></i> Server ${idx + 1}`;
-                btn.onclick = async (ev) => {
+                btn.innerHTML = `<i class="fa-solid fa-server text-[8px] mr-1"></i> Source ${idx + 1}`;
+                btn.onclick = (ev) => {
                     ev.stopPropagation();
                     activeStreamIdx = idx;
                     renderServerButtons();
-                    await playSelectedSource({ autoplay: true, forceProbe: false });
+                    playSelectedSource({ autoplay: true });
                 };
                 container.appendChild(btn);
             });
 
-            // add a quick reload button
+            // Fast reload button
             const reloadBtn = document.createElement('button');
-            reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 ml-2';
-            reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Player`;
+            reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 transition font-bold';
+            reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Node`;
             reloadBtn.onclick = () => {
                 quickReloadPlayer();
             };
@@ -514,251 +499,234 @@
         }
 
         // Play Selected Video Node
-        async function playSelectedSource(opts = { autoplay: true, forceProbe: false }) {
+        async function playSelectedSource(opts = { autoplay: true }) {
             if (!activeStreamList || activeStreamList.length === 0) return;
-            let liveUrl = activeStreamList[activeStreamIdx];
+            const liveUrl = activeStreamList[activeStreamIdx];
 
-            // If URL is raw and might be blocked, use currently selected proxy wrapper if necessary
-            // But Hls can handle remote m3u8 directly. We will attempt direct and fallback to proxies on failure.
-            // Trigger Loader Spinner
             spinner.classList.remove('hidden');
-            spinnerText.textContent = `Connecting: Server ${activeStreamIdx + 1}...`;
+            spinnerText.textContent = `Connecting Live Node: Source ${activeStreamIdx + 1}...`;
 
-            // Destroy previous instance quickly
             if (hlsInstance) {
                 try { hlsInstance.stopLoad(); } catch(e){}
                 try { hlsInstance.destroy(); } catch(e){}
                 hlsInstance = null;
             }
 
-            // If the URL looks proxied already (starts with https://api.allorigins.win or corsproxy), skip probe
-            const isProxied = CORS_PROXIES.some(pf => pf('x').startsWith(liveUrl.substring(0, 10)));
-
-            // If the chosen candidate is slow and we haven't forced a probe, try reordering again quickly (cheap)
-            if (!opts.forceProbe && activeStreamList.length > 1) {
-                // probe top 3 to ensure the chosen one is still fastest
-                try {
-                    const sorted = await probeAndSort(activeStreamList.slice(0, 4), 4);
-                    // move fastest to top
-                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
-                    activeStreamIdx = 0;
-                    liveUrl = activeStreamList[activeStreamIdx];
-                    renderServerButtons();
-                } catch (e) {
-                    // ignore probe errors
-                }
-            }
-
-            // Attempt playback with HLS.js when supported
-            const tryHlsPlayback = async (src) => {
+            // HLS setup utility
+            const runHlsInstance = async (srcUrl) => {
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls({
-                        maxBufferLength: 22,
+                        maxBufferLength: 8,              // Ultra-low buffers for immediate play
+                        maxMaxBufferLength: 15,
+                        backBufferLength: 4,
+                        liveSyncDurationCount: 2,         // Keep as close to real live as possible
                         enableWorker: true,
-                        liveSyncDurationCount: 3,
-                        manifestLoadingTimeOut: 8000,
-                        xhrSetup: function(xhr, url) {
-                            // set short connection timeouts if needed
-                            xhr.timeout = 8000;
-                        }
+                        manifestLoadingTimeOut: 4500,     // Quick failover if stream is dead
+                        levelLoadingTimeOut: 4500,
+                        fragLoadingTimeOut: 6000
                     });
-                    hlsInstance.loadSource(src);
+
+                    hlsInstance.loadSource(srcUrl);
                     hlsInstance.attachMedia(video);
 
-                    let manifestParsed = false;
-                    const manifestPromise = new Promise((resolve, reject) => {
-                        const onManifest = () => {
-                            manifestParsed = true;
+                    const playbackPromise = new Promise((resolve, reject) => {
+                        let ok = false;
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                            ok = true;
                             resolve();
-                        };
-                        const onError = (event, data) => {
-                            if (data && data.fatal) {
-                                if (!manifestParsed) reject(data);
-                            }
-                        };
-                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, onManifest);
-                        hlsInstance.on(Hls.Events.ERROR, onError);
-
-                        // safety timeout
-                        setTimeout(() => {
-                            if (!manifestParsed) reject(new Error('manifest timed out'));
-                        }, 8000);
+                        });
+                        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                            if (data && data.fatal && !ok) reject(data);
+                        });
+                        setTimeout(() => { if(!ok) reject(new Error("Timeout")); }, 5000);
                     });
 
-                    try {
-                        await manifestPromise;
-                        spinner.classList.add('hidden');
-                        // Attempt autoplay; if blocked show overlay for user interaction
-                        if (opts.autoplay) {
-                            try {
-                                await video.play();
-                                hideAutoplayOverlay();
-                            } catch (err) {
-                                // autoplay blocked -> show overlay
-                                showAutoplayOverlay();
-                                console.warn("Autoplay blocked; waiting user gesture");
-                            }
+                    await playbackPromise;
+                    spinner.classList.add('hidden');
+                    
+                    if (opts.autoplay) {
+                        try {
+                            await video.play();
+                            hideAutoplayOverlay();
+                        } catch (err) {
+                            showAutoplayOverlay();
                         }
-                        // recover media errors automatically
-                        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
-                            if (data && data.fatal) {
-                                switch (data.type) {
-                                    case Hls.ErrorTypes.NETWORK_ERROR:
-                                        console.warn("Network error - failover triggered", data);
-                                        triggerAutoFailover();
-                                        break;
-                                    case Hls.ErrorTypes.MEDIA_ERROR:
-                                        hlsInstance.recoverMediaError();
-                                        break;
-                                    default:
-                                        triggerAutoFailover();
-                                        break;
-                                }
-                            }
-                        });
-                        return true;
-                    } catch (err) {
-                        try { hlsInstance.destroy(); } catch(e) {}
-                        hlsInstance = null;
-                        throw err;
                     }
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Safari native HLS
-                    video.src = src;
-                    video.load();
-                    video.addEventListener('canplay', () => {
-                        spinner.classList.add('hidden');
-                        if (opts.autoplay) {
-                            video.play().catch(() => showAutoplayOverlay());
-                        }
-                    }, { once: true });
 
-                    video.addEventListener('error', () => {
-                        triggerAutoFailover();
-                    }, { once: true });
+                    // Auto-failover handler for mid-stream breaks
+                    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                        if (data && data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    console.warn("Mid-stream Network disconnect, initiating failover node...");
+                                    triggerAutoFailover();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    hlsInstance.recoverMediaError();
+                                    break;
+                                default:
+                                    triggerAutoFailover();
+                                    break;
+                            }
+                        }
+                    });
+                    return true;
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // Apple Safari native player
+                    video.src = srcUrl;
+                    video.load();
+                    
+                    const nativePromise = new Promise((resolve, reject) => {
+                        video.addEventListener('canplay', resolve, { once: true });
+                        video.addEventListener('error', reject, { once: true });
+                        setTimeout(reject, 5000);
+                    });
+
+                    await nativePromise;
+                    spinner.classList.add('hidden');
+                    if (opts.autoplay) {
+                        video.play().catch(() => showAutoplayOverlay());
+                    }
                     return true;
                 }
                 return false;
             };
 
-            // Try direct HLS playback first
+            // Attempt 1: Direct Fetch (Fastest)
             try {
-                await tryHlsPlayback(liveUrl);
+                await runHlsInstance(liveUrl);
                 return;
             } catch (err) {
-                console.warn("Direct playback failed, trying via proxies...", err);
+                console.warn("Direct connection timeout. Routing through secure proxy...");
             }
 
-            // If direct playback failed, try wrapped proxies in order (rotate proxies)
-            const proxiesToTry = CORS_PROXIES.map(p => p(liveUrl));
-            for (let proxyUrl of proxiesToTry) {
-                spinnerText.textContent = `Trying proxy node...`;
+            // Attempt 2: Route through proxies sequentially (Failover Proxies)
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxiedUrl = CORS_PROXIES[i](liveUrl);
                 try {
-                    await tryHlsPlayback(proxyUrl);
+                    await runHlsInstance(proxiedUrl);
                     return;
-                } catch (err) {
-                    console.warn("Proxy playback failed for", proxyUrl, err);
+                } catch(e) {
+                    console.warn(`Proxy node ${i} routing failed.`);
                 }
             }
 
-            // If we've reached here, all attempts failed — final failover
-            spinnerText.textContent = `All attempts failed. Trying fallback...`;
+            // Attempt 3: Switch to alternative server
             triggerAutoFailover();
         }
 
         // Trigger Auto Failover Switch (Auto switches Server if crashes)
-        async function triggerAutoFailover() {
-            // If there are other streams, pick the next fastest one
+        function triggerAutoFailover() {
             if (activeStreamList.length > 1) {
                 activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
-                console.log(`Fallback triggered. Switching to Server Node ${activeStreamIdx + 1}`);
+                console.log(`Failsafe Activated: Switching to Backup Source ${activeStreamIdx + 1}`);
                 renderServerButtons();
-                playSelectedSource({ autoplay: true, forceProbe: true });
+                playSelectedSource({ autoplay: true });
             } else {
-                // Rotate proxy and retry
+                // If there's only 1 URL in database, rotate proxies directly
                 currentProxyIdx = (currentProxyIdx + 1) % CORS_PROXIES.length;
-                const proxied = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
-                activeStreamList[0] = proxied;
-                console.log(`No second link. Rotating proxy and retrying...`);
-                renderServerButtons();
-                playSelectedSource({ autoplay: true, forceProbe: true });
+                const rotatedProxyUrl = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
+                console.log("No alternative server found. Re-routing sole connection...");
+                activeStreamIdx = 0;
+                playSelectedSource({ autoplay: true });
             }
         }
 
-        // Quick reload player function (keeps same index but re-probes quickly)
+        // Force reload and re-probe fastest server
         async function quickReloadPlayer() {
             spinner.classList.remove('hidden');
-            spinnerText.textContent = 'Quick reloading...';
+            spinnerText.textContent = 'Probing channels for fast response...';
             try {
-                // quick probe top candidates and reorder
                 if (activeStreamList.length > 1) {
-                    const sorted = await probeAndSort(activeStreamList.slice(0, 4), 4);
+                    const sorted = await probeAndOrderServers(activeStreamList, 4);
                     activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
-                    activeStreamIdx = 0;
                 }
+                activeStreamIdx = 0;
                 renderServerButtons();
-                await playSelectedSource({ autoplay: true, forceProbe: true });
-            } catch (e) {
-                console.warn("Quick reload failed", e);
+                await playSelectedSource({ autoplay: true });
+            } catch(e) {
                 triggerAutoFailover();
             } finally {
                 spinner.classList.add('hidden');
             }
         }
 
-        // Custom M3U Importer System (SportsX TV Style)
-        async function importOnlineM3UPlaylist() {
+        // Custom M3U / Channel Importer (SportsX TV Style)
+        async function importChannelData() {
             const nameInp = document.getElementById('m3u-title');
+            const catInp = document.getElementById('m3u-category');
             const urlInp = document.getElementById('m3u-url');
 
             const name = nameInp.value.trim();
+            const category = catInp.value.trim() || 'Imported List';
             const url = urlInp.value.trim();
 
-            if (!name || !url) {
-                alert("প্লেলিস্টের নাম এবং সঠিক M3U লিংক দিন!");
+            if (!url) {
+                alert("দয়া করে একটি সচল M3U8 বা প্লেলিস্ট লিংক দিন!");
                 return;
             }
 
-            try {
-                gridLoader.classList.remove('hidden');
-                const rawM3u = await (await fetchViaProxies(url, { timeout: 8000 })).text();
-                const parsedChannels = parseM3uString(rawM3u);
+            gridLoader.classList.remove('hidden');
 
-                if (parsedChannels.length === 0) {
-                    alert("লিংকটি থেকে কোনো সচল টিভি চ্যানেল খুঁজে পাওয়া যায়নি!");
-                    return;
+            try {
+                // Check if the input is a full M3U Playlist or a single stream M3U8 Link
+                if (url.includes('.m3u') || (url.includes('.m3u8') && !url.includes('index.m3u8') && !url.includes('chunks.m3u8'))) {
+                    const rawM3u = await (await fetchViaProxies(url, { timeout: 8000 })).text();
+                    const parsedChannels = parseM3uString(rawM3u);
+
+                    if (parsedChannels.length === 0) {
+                        alert("লিংকটি থেকে কোনো সচল টিভি চ্যানেল পাওয়া যায়নি!");
+                        gridLoader.classList.add('hidden');
+                        return;
+                    }
+
+                    parsedChannels.forEach(ch => {
+                        ch.id = 'imported-' + Math.random().toString(36).substr(2, 9);
+                        ch.group = name || ch.group || category;
+                    });
+
+                    masterChannelDb.imported = [...masterChannelDb.imported, ...parsedChannels];
+                } else {
+                    // Single Streaming Link Import
+                    if (!name) {
+                        alert("সিঙ্গেল চ্যানেলের জন্য দয়া করে একটি নাম দিন!");
+                        gridLoader.classList.add('hidden');
+                        return;
+                    }
+                    const newChannel = {
+                        id: 'custom-' + Date.now().toString(),
+                        title: name,
+                        group: category,
+                        url: url,
+                        logo: ''
+                    };
+                    masterChannelDb.imported.push(newChannel);
                 }
 
-                // Add unique identifiers
-                parsedChannels.forEach(ch => {
-                    ch.id = 'imported-' + Math.random().toString(36).substr(2, 9);
-                    ch.group = name;
-                });
-
-                masterChannelDb.imported = [...masterChannelDb.imported, ...parsedChannels];
                 saveImportedPlaylists();
 
                 nameInp.value = '';
+                catInp.value = '';
                 urlInp.value = '';
                 toggleElement('importer-panel');
                 switchTab('imported');
 
-                alert(`সফলভাবে ${parsedChannels.length}টি চ্যানেল ইম্পোর্ট করা হয়েছে!`);
+                alert("সফলভাবে আপনার লিঙ্কটি স্থায়ীভাবে সেভ করা হয়েছে!");
             } catch (err) {
-                alert("প্লেলিস্ট ফাইলটি লোড করতে ব্যর্থ হয়েছে। লিংকটি সচল এবং CORS ফ্রী কিনা চেক করুন।");
+                alert("মিডিয়া ফাইলটি লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে সঠিক লিংকটি প্রদান করুন।");
                 console.error(err);
             } finally {
                 gridLoader.classList.add('hidden');
             }
         }
 
-        // Storage controllers
+        // Local Storage Sync (Permanently Saves Imported Playlists)
         function saveImportedPlaylists() {
-            localStorage.setItem('sportsx_imported', JSON.stringify(masterChannelDb.imported));
+            localStorage.setItem('sportsx_imported_v2', JSON.stringify(masterChannelDb.imported));
         }
 
         function loadImportedPlaylists() {
-            const saved = localStorage.getItem('sportsx_imported');
+            const saved = localStorage.getItem('sportsx_imported_v2');
             masterChannelDb.imported = saved ? JSON.parse(saved) : [];
         }
 
@@ -768,7 +736,7 @@
             renderChannelsList();
         }
 
-        // Helper UI toggler
+        // UI Toggler helper
         function toggleElement(id) {
             const el = document.getElementById(id);
             if (el.classList.contains('hidden')) {
@@ -778,7 +746,7 @@
             }
         }
 
-        // Autoplay overlay handling
+        // Autoplay Overlay Utility
         function showAutoplayOverlay() {
             if (autoplayOverlay) {
                 autoplayOverlay.style.display = 'flex';
@@ -788,11 +756,12 @@
                         await video.play();
                         hideAutoplayOverlay();
                     } catch (err) {
-                        console.warn("User-initiated play failed", err);
+                        console.warn("Autoplay blocked by user-agent");
                     }
                 };
             }
         }
+
         function hideAutoplayOverlay() {
             if (autoplayOverlay) {
                 autoplayOverlay.style.display = 'none';
@@ -800,15 +769,10 @@
             }
         }
 
-        // Listen for network connectivity changes to try quick reconnect
+        // Live Reconnect on Network Restore
         window.addEventListener('online', () => {
-            console.log('Network back online — quick reload player');
             quickReloadPlayer();
         });
-
-        // Expose a debug function
-        window._sportsx_quick_reload = quickReloadPlayer;
-
     </script>
 </body>
 </html>
