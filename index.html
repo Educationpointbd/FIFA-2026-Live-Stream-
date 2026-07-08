@@ -1,177 +1,329 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StreamPlay - Telegram Mini App</title>
-    <!-- Tailwind CSS CDN -->
+    <title>StreamPlay AI - Telegram Live TV</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Icons -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- HLS.js CDN for M3U8 playback -->
+    <!-- HLS.js for M3U8 -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        /* Custom scrollbar for better UI */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #1e293b;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #475569;
-            border-radius: 3px;
-        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
+        .tab-active { border-color: #10b981; color: #10b981; background: rgba(16, 185, 129, 0.05); }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none">
 
-    <!-- Header Section -->
-    <header class="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-50 shadow-md">
+    <!-- Header -->
+    <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-4 sticky top-0 z-50 shadow-lg">
         <div class="max-w-4xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <i class="fa-solid fa-circle-play text-emerald-500 text-2xl animate-pulse"></i>
-                <span class="font-bold text-lg tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">STREAMPLAY</span>
+            <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/30">
+                    <i class="fa-solid fa-microchip text-emerald-400 animate-pulse"></i>
+                </div>
+                <div>
+                    <span class="font-bold text-base tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent block">STREAMPLAY AI</span>
+                    <span class="text-[9px] text-slate-400 -mt-1 block">Auto-Sync Premium IPTV Engine</span>
+                </div>
             </div>
-            <div class="text-xs bg-slate-800 text-slate-300 px-3 py-1 rounded-full border border-slate-700">
-                <i class="fa-brands fa-telegram text-sky-400 mr-1"></i> Mini App
-            </div>
+            <!-- Sync Button -->
+            <button onclick="syncAllPlaylists()" class="flex items-center space-x-1.5 text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 px-3 py-1.5 rounded-xl border border-slate-700/60 transition active:scale-95">
+                <i id="sync-icon" class="fa-solid fa-rotate"></i>
+                <span>Auto Sync</span>
+            </button>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="flex-grow max-w-4xl w-full mx-auto p-4 space-y-6">
+    <main class="flex-grow max-w-4xl w-full mx-auto p-3 space-y-4">
 
         <!-- Video Player Window -->
-        <div class="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 aspect-video relative group">
+        <div class="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800/80 aspect-video relative group">
             <video id="video-player" class="w-full h-full object-contain" controls autoplay playsinline></video>
             <!-- Overlay Loader -->
-            <div id="player-loader" class="absolute inset-0 bg-slate-950/80 flex flex-col justify-center items-center hidden">
-                <i class="fa-solid fa-spinner animate-spin text-4xl text-emerald-500 mb-2"></i>
-                <span class="text-sm text-slate-400">Loading Stream...</span>
+            <div id="player-loader" class="absolute inset-0 bg-slate-950/90 flex flex-col justify-center items-center hidden transition-all">
+                <div class="relative flex items-center justify-center">
+                    <div class="animate-ping absolute inline-flex h-12 w-12 rounded-full bg-emerald-400 opacity-20"></div>
+                    <i class="fa-solid fa-network-wired text-3xl text-emerald-400 animate-bounce"></i>
+                </div>
+                <span id="loader-status" class="text-xs text-slate-300 mt-3 font-mono">Connecting Live Server...</span>
             </div>
         </div>
 
-        <!-- Now Playing Alert -->
-        <div id="now-playing-container" class="bg-slate-900/60 border border-slate-800 rounded-xl p-3 hidden items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
-                <p class="text-sm font-medium">Now Streaming: <span id="now-playing-title" class="text-emerald-400">Custom URL</span></p>
+        <!-- Now Playing Status & AI Info -->
+        <div id="status-card" class="bg-slate-900/60 border border-slate-800/60 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 hidden">
+            <div class="flex items-center space-x-3 overflow-hidden">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+                <div class="truncate">
+                    <p class="text-xs text-slate-400 font-mono">ACTIVE CHANNEL</p>
+                    <p id="active-channel-name" class="text-sm font-semibold text-emerald-400 truncate">Select a channel to play</p>
+                </div>
             </div>
-            <button onclick="stopStream()" class="text-xs bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 px-2.5 py-1 rounded-md border border-rose-500/20 transition">
-                Stop
+            <div class="flex items-center space-x-2">
+                <span id="latency-tag" class="text-[10px] bg-slate-800 text-slate-300 px-2.5 py-1 rounded-md border border-slate-700/50 font-mono">Active Proxy 1</span>
+                <button onclick="tryAlternativeServer()" class="text-[10px] bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 px-2.5 py-1 rounded-md border border-amber-500/20 transition">
+                    <i class="fa-solid fa-shuffle mr-1"></i> Switch Server
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-800 text-xs font-semibold overflow-x-auto whitespace-nowrap scrollbar-none">
+            <button onclick="switchTab('sports')" id="tab-sports" class="tab-active py-2.5 px-4 border-b-2 border-transparent transition-all duration-200">
+                <i class="fa-solid fa-trophy mr-1.5"></i> Sports Live
+            </button>
+            <button onclick="switchTab('bd-tv')" id="tab-bd-tv" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-200">
+                <i class="fa-solid fa-tv mr-1.5"></i> BD Live TV
+            </button>
+            <button onclick="switchTab('global')" id="tab-global" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-200">
+                <i class="fa-solid fa-globe mr-1.5"></i> Global Sports
+            </button>
+            <button onclick="switchTab('custom')" id="tab-custom" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all duration-200">
+                <i class="fa-solid fa-bookmark mr-1.5"></i> Saved
             </button>
         </div>
 
-        <!-- Input Box for Custom URL -->
-        <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800/80 shadow-lg">
-            <h2 class="text-md font-semibold text-slate-300 mb-3 flex items-center">
-                <i class="fa-solid fa-link text-emerald-400 mr-2"></i> Add Custom Stream Link
-            </h2>
-            <div class="space-y-3">
-                <input type="text" id="custom-title-input" placeholder="Channel/Stream Title (e.g., Live Sports)" 
-                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600">
-                
-                <div class="flex flex-col sm:flex-row gap-2">
-                    <input type="text" id="custom-url-input" placeholder="Paste your M3U8 or stream link here..." 
-                        class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600">
-                    
-                    <button onclick="playCustomUrl()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold px-6 py-3 rounded-xl transition flex items-center justify-center space-x-1 shadow-lg shadow-emerald-500/15">
-                        <i class="fa-solid fa-play"></i>
-                        <span>Play</span>
-                    </button>
-                    <button onclick="saveCustomChannel()" class="bg-slate-800 hover:bg-slate-700 text-slate-100 px-4 py-3 rounded-xl transition flex items-center justify-center border border-slate-700" title="Save Channel">
-                        <i class="fa-solid fa-bookmark mr-1"></i> Save
-                    </button>
+        <!-- Custom Input Panel (Only shown in Custom tab or toggleable) -->
+        <section id="custom-panel" class="bg-slate-900/40 rounded-xl p-4 border border-slate-800/80 hidden">
+            <h3 class="text-xs font-semibold text-slate-300 mb-2">Add Your Own Private Stream Link</h3>
+            <div class="space-y-2">
+                <input type="text" id="cust-title" placeholder="Channel Title (e.g., Star Sports)" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500">
+                <div class="flex gap-2">
+                    <input type="text" id="cust-url" placeholder="M3U8 link here..." class="flex-grow bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500">
+                    <button onclick="savePrivateChannel()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition">Save</button>
                 </div>
             </div>
         </section>
 
-        <!-- Channels Grid / Pre-configured Sports & TV -->
-        <section class="bg-slate-900 rounded-2xl p-5 border border-slate-800/80 shadow-lg">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-md font-semibold text-slate-300 flex items-center">
-                    <i class="fa-solid fa-tv text-emerald-400 mr-2"></i> Channel List & Playlist
-                </h2>
-                <span class="text-xs text-slate-500" id="channel-count">0 Channels</span>
+        <!-- Dynamic Grid List of Channels -->
+        <section class="min-h-[250px]">
+            <div id="channels-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <!-- Javascript will load content here dynamically -->
             </div>
-
-            <!-- Dynamic Grid -->
-            <div id="channels-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <!-- Dynamic items will be loaded here -->
+            <!-- Empty state loader inside Grid -->
+            <div id="grid-loader" class="flex flex-col items-center justify-center py-16 hidden">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                <p class="text-xs text-slate-500 mt-2">Updating dynamic cloud streams...</p>
             </div>
         </section>
 
     </main>
 
     <!-- Footer -->
-    <footer class="bg-slate-950 text-slate-600 text-center py-4 text-xs border-t border-slate-900">
-        <p>© 2026 StreamPlay Mini App. Built for Telegram and GitHub Pages.</p>
+    <footer class="bg-slate-950 text-slate-700 text-center py-4 text-[10px] border-t border-slate-900">
+        <p>Powered by StreamPlay AI Engine • Auto-Rebuilding IPTV Protocols</p>
     </footer>
 
     <script>
-        // Initialize Telegram WebApp
+        // Telegram WebApp Setup
         let tg = window.Telegram?.WebApp;
         if (tg) {
             tg.ready();
-            tg.expand(); // Make the mini app full screen inside Telegram
+            tg.expand();
         }
 
         const video = document.getElementById('video-player');
         const loader = document.getElementById('player-loader');
-        const nowPlayingContainer = document.getElementById('now-playing-container');
-        const nowPlayingTitle = document.getElementById('now-playing-title');
+        const statusCard = document.getElementById('status-card');
+        const activeName = document.getElementById('active-channel-name');
+        const latencyTag = document.getElementById('latency-tag');
+        const gridLoader = document.getElementById('grid-loader');
+
+        let currentTab = 'sports';
         let hlsInstance = null;
+        let currentStreamUrl = '';
+        let currentStreamTitle = '';
+        let fallbackUrls = []; // Alternative streams array for failover
+        let fallbackIndex = 0;
 
-        // Sample Pre-loaded Demo Channels (You can edit these to add default satellite channels or live feeds)
-        const defaultChannels = [
-            { id: '1', title: 'Live Sports Feed (Demo)', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
-            { id: '2', title: 'Tears of Steel HLS', url: 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8' }
+        // Auto-Updating Playlists from active cloud servers
+        const CLOUD_SOURCES = {
+            sports: 'https://raw.githubusercontent.com/sm-monirulislam/SM-Live-TV/refs/heads/main/Combined_Live_TV.m3u', // Live Sports matches
+            bdtv: 'https://raw.githubusercontent.com/imShakil/tvlink/refs/heads/main/iptv.m3u8', // BD Channels
+            jagobd: 'https://raw.githubusercontent.com/tahsinulmohsin/jagobd-m3u8-scraper/master/playlist.m3u8', // JagoBD scraper
+            global: 'https://iptv-org.github.io/iptv/categories/sports.m3u' // Global Sports
+        };
+
+        // Cache for Parsed Channels
+        let db = {
+            sports: [],
+            bdtv: [],
+            global: [],
+            custom: []
+        };
+
+        // Free CORS Proxies to bypass geoblocks and CORS issues
+        const PROXIES = [
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            (url) => `https://thingproxy.freeboard.io/fetch/${url}`
         ];
+        let activeProxyIndex = 0;
 
-        // Load channels on start
-        document.addEventListener('DOMContentLoaded', () => {
-            initChannels();
+        document.addEventListener('DOMContentLoaded', async () => {
+            loadSavedPrivateChannels();
+            await syncAllPlaylists();
         });
 
-        function getSavedChannels() {
-            const saved = localStorage.getItem('stream_channels');
-            return saved ? JSON.parse(saved) : defaultChannels;
+        // Switch panel tabs
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('button[id^="tab-"]').forEach(btn => btn.classList.remove('tab-active'));
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+
+            const custPanel = document.getElementById('custom-panel');
+            if (tab === 'custom') {
+                custPanel.classList.remove('hidden');
+            } else {
+                custPanel.classList.add('hidden');
+            }
+            renderChannels();
         }
 
-        function initChannels() {
-            const channels = getSavedChannels();
-            const container = document.getElementById('channels-container');
-            const countLabel = document.getElementById('channel-count');
-            
-            container.innerHTML = '';
-            countLabel.textContent = `${channels.length} Channels`;
+        // Fetch & parse lists automatically with Proxy Rotation
+        async function fetchWithProxy(targetUrl) {
+            let lastError;
+            for (let i = 0; i < PROXIES.length; i++) {
+                try {
+                    const proxyUrl = PROXIES[i](targetUrl);
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        activeProxyIndex = i;
+                        return await response.text();
+                    }
+                } catch (e) {
+                    lastError = e;
+                    console.warn(`Proxy ${i} failed. Trying next proxy...`);
+                }
+            }
+            throw lastError || new Error("All proxies failed to fetch");
+        }
 
-            if (channels.length === 0) {
-                container.innerHTML = `<div class="col-span-full py-8 text-center text-slate-500 text-sm">No channels added yet. Paste a link above to add!</div>`;
+        // Parse M3U playlist file dynamically
+        function parseM3uData(text) {
+            const lines = text.split('\n');
+            let list = [];
+            let current = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    current = {};
+                    // Extract Logo
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    current.logo = logoMatch ? logoMatch[1] : '';
+                    
+                    // Extract Title
+                    const commaIdx = line.lastIndexOf(',');
+                    current.title = commaIdx !== -1 ? line.substring(commaIdx + 1).trim() : 'Unknown Channel';
+                } else if (line.startsWith('http') && current) {
+                    current.url = line;
+                    list.push(current);
+                    current = null;
+                }
+            }
+            return list;
+        }
+
+        // Sync and Load lists from Web Servers
+        async function syncAllPlaylists() {
+            const syncIcon = document.getElementById('sync-icon');
+            syncIcon.classList.add('animate-spin');
+            gridLoader.classList.remove('hidden');
+            document.getElementById('channels-grid').innerHTML = '';
+
+            try {
+                // Fetch Sports Matches
+                const sportsText = await fetchWithProxy(CLOUD_SOURCES.sports);
+                db.sports = parseM3uData(sportsText);
+
+                // Fetch BD TV Channels (Combines tvlink & jagobd-scraper)
+                const bdText = await fetchWithProxy(CLOUD_SOURCES.bdtv);
+                const bdList = parseM3uData(bdText);
+                
+                try {
+                    const jagoText = await fetchWithProxy(CLOUD_SOURCES.jagobd);
+                    const jagoList = parseM3uData(jagoText);
+                    db.bdtv = [...jagoList, ...bdList];
+                } catch(err) {
+                    db.bdtv = bdList; // Fallback only to TVLink if jagobd fails
+                }
+
+                // Fetch Global Sports
+                const globalText = await fetchWithProxy(CLOUD_SOURCES.global);
+                db.global = parseM3uData(globalText).slice(0, 100); // Limit to top 100 to avoid lag
+
+                console.log("Successfully Auto-Synced all lists!");
+            } catch (err) {
+                console.error("Auto Sync Error: ", err);
+                // Load local fallback streams
+                db.sports = [
+                    { title: "T Sports Live HD (S1)", url: "https://stream.sunplex.live/T-SPORTS/index.m3u8", logo: "" },
+                    { title: "T Sports Live (S2)", url: "https://tvsen7.aynaott.com/tsportsfhd/index.m3u8", logo: "" }
+                ];
+                db.bdtv = [
+                    { title: "Gazi TV Live HD", url: "https://stream.sunplex.live/GAZI-TV/index.m3u8", logo: "" },
+                    { title: "BTV World", url: "http://38.96.178.201:80/live/BTV/index.m3u8", logo: "" }
+                ];
+            } finally {
+                syncIcon.classList.remove('animate-spin');
+                gridLoader.classList.add('hidden');
+                renderChannels();
+            }
+        }
+
+        // Render UI Grid based on current active tab
+        function renderChannels() {
+            const container = document.getElementById('channels-grid');
+            container.innerHTML = '';
+            
+            let list = [];
+            if (currentTab === 'sports') list = db.sports;
+            else if (currentTab === 'bd-tv') list = db.bdtv;
+            else if (currentTab === 'global') list = db.global;
+            else if (currentTab === 'custom') list = db.custom;
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-16 text-center text-slate-500 text-xs font-mono">
+                        <i class="fa-solid fa-circle-nodes text-2xl mb-2 text-slate-600 block"></i>
+                        No live channels found in this tab. Try syncing again.
+                    </div>
+                `;
                 return;
             }
 
-            channels.forEach(channel => {
-                const isDefault = defaultChannels.some(d => d.id === channel.id);
+            list.forEach((ch, idx) => {
                 const item = document.createElement('div');
-                item.className = 'flex items-center justify-between p-3.5 bg-slate-950/60 rounded-xl border border-slate-800 hover:border-emerald-500/40 hover:bg-slate-950 transition group';
+                item.className = 'bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 flex items-center justify-between hover:border-emerald-500/30 hover:bg-slate-900 transition duration-200 group cursor-pointer';
                 
+                // Use default icons if logo is empty
+                const channelLogo = ch.logo ? `<img src="${ch.logo}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1" onerror="this.src='https://placehold.co/40x40/0f172a/10b981?text=TV'">` : 
+                `<div class="w-10 h-10 bg-slate-950 rounded-lg flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-all duration-300">
+                    <i class="fa-solid fa-play text-xs"></i>
+                </div>`;
+
                 item.innerHTML = `
-                    <div class="flex items-center space-x-3 cursor-pointer overflow-hidden flex-grow" onclick="playStream('${channel.url}', '${channel.title}')">
-                        <div class="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-emerald-400 group-hover:text-slate-950 group-hover:bg-emerald-400 transition-all duration-300">
-                            <i class="fa-solid fa-play text-sm"></i>
-                        </div>
+                    <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="initializeStreamPlay('${ch.url}', '${ch.title}')">
+                        ${channelLogo}
                         <div class="truncate">
-                            <h3 class="font-medium text-sm text-slate-200 truncate group-hover:text-emerald-400 transition">${channel.title}</h3>
-                            <p class="text-xs text-slate-600 truncate">${channel.url}</p>
+                            <h4 class="text-xs font-bold text-slate-200 truncate group-hover:text-emerald-400 transition">${ch.title}</h4>
+                            <p class="text-[10px] text-slate-500 truncate mt-0.5">${ch.url}</p>
                         </div>
                     </div>
-                    ${!isDefault ? `
-                    <button onclick="deleteChannel('${channel.id}')" class="text-slate-500 hover:text-rose-400 p-2 rounded-lg transition" title="Delete">
-                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    ${currentTab === 'custom' ? `
+                    <button onclick="deletePrivateChannel('${ch.id}')" class="text-slate-600 hover:text-rose-400 p-2 transition">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
                     </button>
                     ` : ''}
                 `;
@@ -179,122 +331,65 @@
             });
         }
 
-        // Play stream function
-        function playStream(url, title) {
-            if (!url) return;
+        // Initialize and Play stream with Failover Protection (Auto Future Fallback)
+        function initializeStreamPlay(url, title) {
+            currentStreamUrl = url;
+            currentStreamTitle = title;
+            
+            // Build fallback list based on same channel title pattern match
+            fallbackUrls = [url];
+            fallbackIndex = 0;
+            
+            // Add other matching streams as fallback servers
+            const cleanTitle = title.toLowerCase().replace(/live|hd|server|\d+/g, '').trim();
+            let allAvailable = [...db.sports, ...db.bdtv, ...db.global];
+            allAvailable.forEach(ch => {
+                if (ch.url !== url && ch.title.toLowerCase().includes(cleanTitle)) {
+                    fallbackUrls.push(ch.url);
+                }
+            });
 
-            // Show Loader
+            playActiveM3u8();
+        }
+
+        // Actual HLS streaming driver
+        function playActiveM3u8() {
+            if (fallbackUrls.length === 0) return;
+            const activeUrl = fallbackUrls[fallbackIndex];
+
+            // Show Loader Status
             loader.classList.remove('hidden');
-            nowPlayingContainer.classList.remove('hidden');
-            nowPlayingTitle.textContent = title;
+            statusCard.classList.remove('hidden');
+            activeName.textContent = currentStreamTitle;
+            latencyTag.textContent = `Server Node ${fallbackIndex + 1}/${fallbackUrls.length}`;
 
-            // Clean up previous HLS instance
+            // Reset player instance
             if (hlsInstance) {
                 hlsInstance.destroy();
                 hlsInstance = null;
             }
 
             if (Hls.isSupported()) {
-                hlsInstance = new Hls();
-                hlsInstance.loadSource(url);
+                hlsInstance = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    backBufferLength: 90
+                });
+                hlsInstance.loadSource(activeUrl);
                 hlsInstance.attachMedia(video);
                 
                 hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
                     loader.classList.add('hidden');
-                    video.play().catch(err => {
-                        console.log("Auto-play blocked, waiting for user interaction: ", err);
-                    });
+                    video.play().catch(e => console.log("User interaction needed: ", e));
                 });
 
                 hlsInstance.on(Hls.Events.ERROR, function (event, data) {
                     if (data.fatal) {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.error("Fatal network error encountered, trying to recover");
-                                hlsInstance.startLoad();
+                                console.log("HLS Network Error, attempting fallback...");
+                                tryAlternativeServer();
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.error("Fatal media error encountered, trying to recover");
                                 hlsInstance.recoverMediaError();
-                                break;
-                            default:
-                                console.error("Unrecoverable error encountered, destroying stream");
-                                stopStream();
-                                alert("Failed to play the stream. Please check if the link is active and supports CORS.");
-                                break;
-                        }
-                    }
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // Native HLS for Safari (iOS / macOS)
-                video.src = url;
-                video.addEventListener('canplay', () => {
-                    loader.classList.add('hidden');
-                    video.play();
-                });
-            } else {
-                loader.classList.add('hidden');
-                alert("Your browser does not support M3U8 streaming.");
-            }
-        }
-
-        // Play from custom input box
-        function playCustomUrl() {
-            const urlInput = document.getElementById('custom-url-input').value.trim();
-            const titleInput = document.getElementById('custom-title-input').value.trim() || 'Custom Stream';
-            if (urlInput) {
-                playStream(urlInput, titleInput);
-            } else {
-                alert("Please enter a valid M3U8 or stream link.");
-            }
-        }
-
-        // Stop Player
-        function stopStream() {
-            video.pause();
-            video.src = "";
-            if (hlsInstance) {
-                hlsInstance.destroy();
-                hlsInstance = null;
-            }
-            loader.classList.add('hidden');
-            nowPlayingContainer.classList.add('hidden');
-        }
-
-        // Save channel to localstorage
-        function saveCustomChannel() {
-            const urlInput = document.getElementById('custom-url-input').value.trim();
-            const titleInput = document.getElementById('custom-title-input').value.trim();
-
-            if (!urlInput || !titleInput) {
-                alert("Please fill up both Title and Stream URL fields.");
-                return;
-            }
-
-            const saved = getSavedChannels();
-            const newChannel = {
-                id: Date.now().toString(),
-                title: titleInput,
-                url: urlInput
-            };
-
-            saved.push(newChannel);
-            localStorage.setItem('stream_channels', JSON.stringify(saved));
-            
-            // Reset input values
-            document.getElementById('custom-title-input').value = '';
-            document.getElementById('custom-url-input').value = '';
-
-            initChannels();
-        }
-
-        // Delete channel
-        function deleteChannel(id) {
-            let saved = getSavedChannels();
-            saved = saved.filter(channel => channel.id !== id);
-            localStorage.setItem('stream_channels', JSON.stringify(saved));
-            initChannels();
-        }
-    </script>
-</body>
-			    </html>
+          
