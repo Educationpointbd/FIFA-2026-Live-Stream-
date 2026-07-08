@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SportsX PRO Web - TMA Player Engine</title>
+    <title>SportsX Web - TMA Player Engine (Cloud Edition)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for Pro Icons -->
@@ -12,6 +12,13 @@
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Firebase Legacy Compat SDKs for single-file integration stability -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
     <style>
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
@@ -32,26 +39,48 @@
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
 
+    <!-- Live Notification Banner -->
+    <div id="live-alert" class="bg-gradient-to-r from-emerald-950/80 via-teal-900/60 to-slate-950/80 border-b border-emerald-500/20 px-4 py-2 text-center text-xs text-emerald-300 font-medium hidden">
+        <span class="inline-flex items-center gap-2">
+            <i class="fa-solid fa-bullhorn text-emerald-400 animate-bounce"></i>
+            <span id="alert-text">লোড হচ্ছে...</span>
+        </span>
+    </div>
+
     <!-- Header Section -->
     <header class="bg-slate-900/95 border-b border-slate-800/80 p-4 sticky top-0 z-50 shadow-md">
         <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
-                    <i class="fa-solid fa-bolt-lightning text-lg animate-pulse"></i>
+            <div class="flex items-center justify-between w-full sm:w-auto">
+                <div class="flex items-center space-x-3">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
+                        <i class="fa-solid fa-bolt-lightning text-lg animate-pulse"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-base tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SPORTSX PRO</h1>
+                        <span class="text-[9px] text-slate-400 font-mono block">Cloud-Optimized Zero-Lag Streaming</span>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="font-extrabold text-base tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SPORTSX PRO</h1>
-                    <span class="text-[9px] text-slate-400 font-mono block">AI-Optimized Zero-Lag Streaming Developer Yasin</span>
-                </div>
+                <!-- Admin Lock Switcher (Mobile) -->
+                <button onclick="toggleModal('admin-modal')" class="sm:hidden bg-slate-850 hover:bg-slate-800 border border-slate-800/80 p-2.5 rounded-xl text-slate-300 hover:text-emerald-400 transition">
+                    <i class="fa-solid fa-user-shield text-sm"></i>
+                </button>
             </div>
             
-            <!-- Real-time Search Engine -->
-            <div class="relative w-full sm:w-64">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
-                </span>
-                <input type="text" id="search-input" oninput="triggerSearch()" placeholder="চ্যানেল বা ম্যাচ খুঁজুন..." 
-                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-100">
+            <!-- Actions Panel -->
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+                <!-- Real-time Search Engine -->
+                <div class="relative flex-grow sm:w-64">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="triggerSearch()" placeholder="চ্যানেল বা ম্যাচ খুঁজুন..." 
+                        class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-100">
+                </div>
+
+                <!-- Admin Desktop Button -->
+                <button onclick="toggleModal('admin-modal')" class="hidden sm:flex bg-slate-950 hover:bg-slate-900 border border-slate-800/80 hover:border-emerald-500/30 px-3 py-2 rounded-xl text-xs text-slate-300 font-bold items-center gap-1.5 transition">
+                    <i class="fa-solid fa-user-shield text-[10px] text-emerald-400"></i> Admin Panel
+                </button>
             </div>
         </div>
     </header>
@@ -108,14 +137,14 @@
                     <p class="text-[10px] text-slate-400">আপনার গিটহাবের RAW M3U প্লেলিস্ট লিঙ্ক এখানে পেস্ট করে রাখুন। অ্যাপ ওপেন হলেই তা অটো-সিঙ্ক হয়ে যাবে।</p>
                     <div class="flex gap-2">
                         <input type="text" id="github-sync-url" placeholder="https://raw.githubusercontent.com/your-username/repo/main/playlist.m3u" class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
-                        <button onclick="saveGitHubSyncConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-4 py-2 rounded-lg text-xs transition">Save & Sync</button>
+                        <button onclick="saveGitHubSyncConfig()" class="bg-slate-850 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold px-4 py-2 rounded-lg text-xs transition">Save & Sync</button>
                     </div>
                 </div>
 
                 <!-- Local Manual Importer -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input type="text" id="m3u-title" placeholder="Stream / Channel Title" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
-                    <input type="text" id="m3u-category" placeholder="Category (e.g. Sports, News)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                    <input type="text" id="m3u-category" placeholder="Category (e.g. BD Sports, BD TV, Global)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
                 </div>
                 <div class="flex gap-2">
                     <input type="text" id="m3u-url" placeholder="Paste .m3u8 Playlist or Single Streaming Link..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
@@ -155,6 +184,124 @@
 
     </main>
 
+    <!-- Admin Operations Modal Dashboard -->
+    <div id="admin-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-card max-w-2xl w-full max-h-[85vh] overflow-y-auto rounded-2xl p-6 relative flex flex-col gap-4">
+            
+            <!-- Close Modal -->
+            <button onclick="toggleModal('admin-modal')" class="absolute top-4 right-4 text-slate-400 hover:text-slate-200 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- AUTH CONTROL -->
+            <div id="auth-box">
+                <h3 class="text-sm font-bold text-emerald-400 uppercase tracking-wide mb-3"><i class="fa-solid fa-shield-halved mr-1"></i> Admin Authentication</h3>
+                <div class="space-y-2.5">
+                    <input type="email" id="admin-email" placeholder="Admin Email" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                    <input type="password" id="admin-password" placeholder="Password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-emerald-500">
+                    <button onclick="handleAdminLogin()" class="w-full btn-gradient text-slate-950 font-bold py-2.5 rounded-xl text-xs transition">Authenticate Session</button>
+                </div>
+            </div>
+
+            <!-- DASHBOARD CONTROL PANEL (HIDDEN BY DEFAULT) -->
+            <div id="dashboard-box" class="hidden space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div>
+                        <h3 class="text-sm font-bold text-emerald-400"><i class="fa-solid fa-gauge mr-1"></i> Admin Command Center</h3>
+                        <span id="session-user" class="text-[9px] text-slate-500 font-mono">Logged in as admin</span>
+                    </div>
+                    <button onclick="handleAdminLogout()" class="bg-rose-950/50 text-rose-300 border border-rose-900/50 hover:bg-rose-900/50 px-3 py-1.5 rounded-lg text-[10px] font-bold transition">Logout</button>
+                </div>
+
+                <!-- ADD & EDIT STREAM FORM -->
+                <div class="bg-slate-950/50 border border-slate-800/80 rounded-xl p-4 space-y-3">
+                    <h4 id="form-title" class="text-xs font-bold text-slate-200 uppercase tracking-wide"><i class="fa-solid fa-square-plus mr-1"></i> Add Cloud Stream</h4>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-mono block mb-1">Stream Name:</label>
+                            <input type="text" id="stream-name" placeholder="E.g. Sony Sports Ten 1" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-mono block mb-1">Group (e.g. Premium Sports):</label>
+                            <input type="text" id="stream-group" placeholder="E.g. BD TV / Sports" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] text-slate-400 font-mono block mb-1">Tab Classification:</label>
+                        <select id="stream-category" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100">
+                            <option value="sports">BD Sports & TV (sports)</option>
+                            <option value="premium">Dynamic Events (premium)</option>
+                            <option value="global">Global Live (global)</option>
+                            <option value="imported">Saved / Imported (imported)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] text-slate-400 font-mono block mb-1">Primary Stream URL (M3U8):</label>
+                        <input type="text" id="stream-url" placeholder="https://domain.com/live/index.m3u8" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] text-slate-400 font-mono block mb-1">Backup Failover Server URLs (Comma Separated):</label>
+                        <input type="text" id="stream-backups" placeholder="https://backup1.m3u8, https://backup2.m3u8" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-mono block mb-1">Logo URL:</label>
+                            <input type="text" id="stream-logo" placeholder="https://logo-domain.com/path.jpg" class="w-full bg-slate-950 border border-slate-800/80 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 font-mono block mb-1">Or Cloud Logo Upload:</label>
+                            <input type="file" id="logo-file" accept="image/*" onchange="uploadLogoToStorage()" class="w-full text-[11px] text-slate-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-semibold file:bg-slate-800 file:text-emerald-400 hover:file:bg-slate-700 cursor-pointer">
+                            <span id="logo-upload-progress" class="text-[9px] text-emerald-400 block mt-1"></span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 justify-end pt-2">
+                        <button onclick="resetStreamForm()" class="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 font-bold px-4 py-2 rounded-xl text-xs transition">Cancel</button>
+                        <button id="stream-save-btn" onclick="saveStreamToFirestore()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition">Save Stream Node</button>
+                    </div>
+                </div>
+
+                <!-- CLOUD APP SETTINGS & BACKUP ENGINE -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <!-- Live Ticker Updates -->
+                    <div class="p-3 bg-slate-950/50 border border-slate-800/80 rounded-xl space-y-2">
+                        <h5 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">Live Notification Ticker</h5>
+                        <input type="text" id="config-alert-msg" placeholder="ঘোষণা মেসেজ এখানে লিখুন..." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-100">
+                        <div class="flex items-center justify-between">
+                            <label class="flex items-center gap-2 text-[10px] text-slate-300 cursor-pointer">
+                                <input type="checkbox" id="config-alert-active" class="accent-emerald-500"> Alert Bar Active
+                            </label>
+                            <button onclick="saveGlobalAlertSettings()" class="bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold transition">Update Alert</button>
+                        </div>
+                    </div>
+
+                    <!-- Cloud JSON Sync Engine -->
+                    <div class="p-3 bg-slate-950/50 border border-slate-800/80 rounded-xl space-y-2 flex flex-col justify-between">
+                        <div>
+                            <h5 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">Cloud Export / Merge</h5>
+                            <p class="text-[9px] text-slate-500">Firestore ডাটাবেস সম্পূর্ণ ব্যাকআপ রাখুন অথবা নতুন JSON ফাইল থেকে ডাটা মার্জ করুন।</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 pt-2">
+                            <button onclick="exportFirestoreDatabase()" class="flex-grow bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-slate-700 transition">
+                                <i class="fa-solid fa-cloud-arrow-down mr-1"></i> Export JSON
+                            </button>
+                            <label class="flex-grow bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-1.5 rounded-lg text-[10px] font-bold text-center cursor-pointer transition">
+                                <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Import JSON
+                                <input type="file" id="import-json-file" accept=".json" onchange="importFirestoreDatabase(event)" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- App Bottom Footer -->
     <footer class="bg-slate-950 text-slate-700 text-center py-5 text-[10px] border-t border-slate-900 font-mono">
         <p>© 2026 SportsX TMA Web-Client • Built for Dynamic IPTV Broadcast Protocols</p>
@@ -167,6 +314,23 @@
             tg.ready();
             tg.expand();
         }
+
+        // Firebase Configuration (Direct Credentials)
+        const firebaseConfig = {
+          apiKey: "AIzaSyDCFbq0COr2iv2hJQWR_dim0sPA2-RiTqY",
+          authDomain: "sportsxpro-882c4.firebaseapp.com",
+          databaseURL: "https://sportsxpro-882c4-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "sportsxpro-882c4",
+          storageBucket: "sportsxpro-882c4.firebasestorage.app",
+          messagingSenderId: "374552544055",
+          appId: "1:374552544055:web:8bad653556894b152d50b2"
+        };
+
+        // Initialize Firebase Compat modules
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const storage = firebase.storage();
 
         const video = document.getElementById('main-player');
         const spinner = document.getElementById('player-spinner');
@@ -181,7 +345,7 @@
 
         // Anti-Looping Failover Variables
         let lastFailoverTime = 0;
-        const FAILOVER_COOLDOWN_MS = 3000; // Wait 3 seconds before next failover
+        const FAILOVER_COOLDOWN_MS = 3000;
         let currentUrlRetryCount = 0;
         const MAX_RETRIES_PER_URL = 3;
 
@@ -203,7 +367,7 @@
             premium_scraped: 'https://iptv-org.github.io/iptv/categories/sports.m3u'
         };
 
-        // Channel Memory Array
+        // Channel Memory Array (Populated locally and in Firestore Real-time)
         let masterChannelDb = {
             sports: PRE_CONFIGURED_BD,
             premium: [],
@@ -211,7 +375,11 @@
             imported: []
         };
 
-        // Enhanced Pro CORS Proxies Pool (Sequential high-speed routing)
+        // Firestore Cache references
+        let cloudChannelsList = [];
+        let editingStreamId = null; // Store ID when updating
+
+        // Enhanced Pro CORS Proxies Pool (Sequential routing)
         const CORS_PROXIES = [
             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
             (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -230,14 +398,17 @@
 
         document.addEventListener('DOMContentLoaded', async () => {
             loadImportedPlaylists();
-            switchTab('sports'); // Render offline channels instantly for zero-delay startup
-            loadSavedGitHubSyncConfig(); // Check for GitHub Raw configuration
-            await syncMasterDatabases(); // Quietly load external databases in background
+            switchTab('sports'); // Render immediately
+            loadSavedGitHubSyncConfig();
+            
+            // Listen to Firestore real-time channel updates
+            setupFirestoreListeners();
+            // Start quiet dynamic sources merge
+            await syncMasterDatabases();
         });
 
         // Bypassing browser-CORS blockages with Direct-First support
         async function fetchViaProxies(url, options = {}) {
-            // Step 1: Attempt direct fetch first for faster speeds
             try {
                 const controller = new AbortController();
                 const timeout = setTimeout(() => controller.abort(), 2500);
@@ -248,7 +419,6 @@
                 console.warn("Direct connection refused, resolving via backup proxies...");
             }
 
-            // Step 2: Fallback to proxy nodes sequentially
             let lastErr = null;
             for (let i = 0; i < CORS_PROXIES.length; i++) {
                 const proxied = CORS_PROXIES[i](url);
@@ -283,7 +453,6 @@
                     return Math.max(1, Math.round(performance.now() - start));
                 }
             } catch (err) {
-                // If HEAD fails, try a fast GET proxy ping
                 try {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -320,15 +489,12 @@
                 if (line.startsWith('#EXTINF:')) {
                     current = {};
                     
-                    // Logo Match
                     const logoMatch = line.match(/tvg-logo="([^"]+)"/);
                     current.logo = logoMatch ? logoMatch[1] : '';
 
-                    // Group Title Match
                     const groupMatch = line.match(/group-title="([^"]+)"/);
                     current.group = groupMatch ? groupMatch[1] : '';
 
-                    // Channel Title
                     const lastComma = line.lastIndexOf(',');
                     current.title = lastComma !== -1 ? line.substring(lastComma + 1).trim() : 'Unnamed Channel';
                 } else if ((line.startsWith('http') || line.startsWith('https')) && current) {
@@ -340,31 +506,99 @@
             return channels;
         }
 
+        // Setup real-time updates using Firestore listeners
+        function setupFirestoreListeners() {
+            // Realtime Sync channels
+            db.collection("channels").onSnapshot((snapshot) => {
+                cloudChannelsList = [];
+                snapshot.forEach(doc => {
+                    cloudChannelsList.push({ id: doc.id, ...doc.data() });
+                });
+                mergeAllDatabases();
+            }, error => {
+                console.warn("Firestore collection synced in read-only offline fallback:", error);
+            });
+
+            // Realtime Global settings ticker Sync
+            db.collection("settings").doc("globalAlert").onSnapshot((doc) => {
+                const alertEl = document.getElementById('live-alert');
+                const textEl = document.getElementById('alert-text');
+                if (doc.exists) {
+                    const data = doc.data();
+                    if (data.active && data.message) {
+                        textEl.textContent = data.message;
+                        alertEl.classList.remove('hidden');
+                        
+                        // Populate modal configs for active session admin
+                        document.getElementById('config-alert-msg').value = data.message;
+                        document.getElementById('config-alert-active').checked = data.active;
+                    } else {
+                        alertEl.classList.add('hidden');
+                    }
+                } else {
+                    alertEl.classList.add('hidden');
+                }
+            });
+
+            // Auth State Observer
+            auth.onAuthStateChanged((user) => {
+                const authBox = document.getElementById('auth-box');
+                const dashboardBox = document.getElementById('dashboard-box');
+                
+                if (user) {
+                    authBox.classList.add('hidden');
+                    dashboardBox.classList.remove('hidden');
+                    document.getElementById('session-user').textContent = `Authorized: ${user.email}`;
+                } else {
+                    authBox.classList.remove('hidden');
+                    dashboardBox.classList.add('hidden');
+                }
+                // Refresh list with edit/delete tags
+                renderChannelsList();
+            });
+        }
+
         // Fetch & Cache dynamically to avoid API limits
         async function syncMasterDatabases() {
             gridLoader.classList.remove('hidden');
             try {
-                // Fetch & parse Sports Matches Link
                 const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 6000 })).text();
                 masterChannelDb.premium = parseM3uString(sportsRaw);
 
-                // Fetch & parse Premium Indian / Global Link
                 const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 6000 })).text();
-                masterChannelDb.global = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
+                masterChannelDb.global = parseM3uString(premiumRaw).slice(0, 150);
 
-                // If GitHub Auto-Sync is configured, fetch raw playlist data on startup
                 const githubUrl = document.getElementById('github-sync-url').value.trim();
                 if (githubUrl) {
                     await syncGitHubPlaylists(githubUrl);
                 }
-
-                console.log("Databases Sync Successful!");
             } catch (err) {
-                console.error("Master Sync failed. Falling back to default servers...", err);
+                console.warn("Dynamic Sync loaded with local defaults fallback.", err);
             } finally {
                 gridLoader.classList.add('hidden');
-                if (activeTab !== 'sports') renderChannelsList();
+                mergeAllDatabases();
             }
+        }
+
+        // Integrate cloud records safely into respective tabs
+        function mergeAllDatabases() {
+            // Reinitialize bases
+            masterChannelDb.sports = [...PRE_CONFIGURED_BD, ...cloudChannelsList.filter(c => c.category === 'sports')];
+            
+            // Premium/Scraped source logic
+            const cloudPremium = cloudChannelsList.filter(c => c.category === 'premium');
+            masterChannelDb.premium = [...cloudPremium, ...masterChannelDb.premium.filter(p => !cloudPremium.some(c => c.url === p.url))];
+
+            // Global logic
+            const cloudGlobal = cloudChannelsList.filter(c => c.category === 'global');
+            masterChannelDb.global = [...cloudGlobal, ...masterChannelDb.global.filter(g => !cloudGlobal.some(c => c.url === g.url))];
+
+            // Imported records
+            const savedLocal = getLocalImportedPlaylists();
+            const cloudImported = cloudChannelsList.filter(c => c.category === 'imported');
+            masterChannelDb.imported = [...cloudImported, ...savedLocal];
+
+            renderChannelsList();
         }
 
         // Fetch playlist raw data from custom GitHub URL
@@ -377,16 +611,18 @@
                         ch.id = 'github-' + Math.random().toString(36).substr(2, 9);
                         ch.group = ch.group || 'GitHub Sync';
                     });
-                    masterChannelDb.imported = [...masterChannelDb.imported.filter(ch => !ch.id.startsWith('github-')), ...githubChannels];
-                    saveImportedPlaylists();
-                    console.log(`Synced ${githubChannels.length} channels from GitHub RAW Config`);
+                    
+                    // Filter existing GitHub and store
+                    const localStore = getLocalImportedPlaylists().filter(ch => !ch.id.startsWith('github-'));
+                    const merged = [...localStore, ...githubChannels];
+                    localStorage.setItem('sportsx_imported_v2', JSON.stringify(merged));
+                    loadImportedPlaylists();
                 }
             } catch(e) {
-                console.warn("GitHub Auto-Sync failed:", e);
+                console.warn("GitHub Sync connection timed out", e);
             }
         }
 
-        // Render Tab views
         function switchTab(tabId) {
             activeTab = tabId;
             document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
@@ -399,23 +635,20 @@
                 activeBtn.classList.add('text-emerald-400', 'border-emerald-400', 'border-b-2');
                 activeBtn.classList.remove('text-slate-400');
             }
-            
             renderChannelsList();
         }
 
-        // Live Search Handler
         function triggerSearch() {
             searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
             renderChannelsList();
         }
 
-        // Custom initials svg builder in case image urls are offline or blocked
         function getSvgInitialsLogo(text) {
             const initials = text ? text.trim().substring(0, 2).toUpperCase() : 'TV';
             return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="100%" height="100%" fill="%230f172a"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" fill="%2310b981">${initials}</text></svg>`;
         }
 
-        // Render UI Cards on screen
+        // Render Cards dynamically based on selected tabs
         function renderChannelsList() {
             const grid = document.getElementById('channels-grid');
             grid.innerHTML = '';
@@ -426,7 +659,6 @@
             else if (activeTab === 'global') sourceList = masterChannelDb.global;
             else if (activeTab === 'imported') sourceList = masterChannelDb.imported;
 
-            // Apply Search Filtering
             if (searchQuery) {
                 sourceList = sourceList.filter(ch => ch.title.toLowerCase().includes(searchQuery));
             }
@@ -435,60 +667,82 @@
                 grid.innerHTML = `
                     <div class="col-span-full py-20 text-center text-slate-600 text-xs font-mono">
                         <i class="fa-solid fa-binoculars text-2xl text-slate-700 mb-2 block"></i>
-                        No channels matched your request.
+                        No active channels found.
                     </div>
                 `;
                 return;
             }
 
-            sourceList.forEach((ch, index) => {
+            const isAdmin = auth.currentUser !== null;
+
+            sourceList.forEach((ch) => {
                 const card = document.createElement('div');
-                card.className = 'glass-card rounded-xl p-3 flex items-center justify-between hover:border-emerald-500/30 hover:bg-slate-900/40 transition duration-300 group cursor-pointer';
+                card.className = 'glass-card rounded-xl p-3 flex items-center justify-between hover:border-emerald-500/30 hover:bg-slate-900/40 transition duration-300 group cursor-pointer relative';
                 
                 const initialsFallback = getSvgInitialsLogo(ch.title);
                 const logoHtml = ch.logo ? 
                     `<img src="${ch.logo}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1" onerror="this.onerror=null; this.src='${initialsFallback}';">` :
                     `<img src="${initialsFallback}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1">`;
 
+                // Handle alternative arrays
+                const altString = ch.altUrls ? ch.altUrls.join(',') : '';
+
                 card.innerHTML = `
-                    <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}', {autoSelectFastest: true, autoplay: true})">
+                    <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}', {autoSelectFastest: true, autoplay: true, altString: '${altString}'})">
                         ${logoHtml}
                         <div class="truncate">
                             <h4 class="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition truncate">${ch.title}</h4>
                             <p class="text-[9px] text-slate-500 font-mono truncate mt-0.5">${ch.group || 'Active IPTV Node'}</p>
                         </div>
                     </div>
-                    ${activeTab === 'imported' ? `
-                    <button onclick="removeImportedChannel('${ch.id}')" class="text-slate-600 hover:text-rose-400 p-2 transition">
-                        <i class="fa-solid fa-trash text-xs"></i>
-                    </button>
-                    ` : ''}
+                    <div class="flex items-center space-x-1">
+                        ${isAdmin && ch.id && !ch.id.toString().startsWith('bd-') && !ch.id.toString().startsWith('github-') ? `
+                            <button onclick="event.stopPropagation(); loadChannelToForm('${ch.id}')" class="text-slate-500 hover:text-emerald-400 p-1.5 transition">
+                                <i class="fa-solid fa-pen text-[10px]"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); deleteChannelFromFirestore('${ch.id}')" class="text-slate-500 hover:text-rose-400 p-1.5 transition">
+                                <i class="fa-solid fa-trash text-[10px]"></i>
+                            </button>
+                        ` : ''}
+                        ${activeTab === 'imported' && !isAdmin ? `
+                            <button onclick="event.stopPropagation(); removeImportedChannel('${ch.id}')" class="text-slate-600 hover:text-rose-400 p-2 transition">
+                                <i class="fa-solid fa-trash text-xs"></i>
+                            </button>
+                        ` : ''}
+                    </div>
                 `;
                 grid.appendChild(card);
             });
         }
 
-        // Initialize streaming player with Advanced Failover and Fastest-server selection
-        async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true }) {
+        // Play engine initialization (with explicit Alt String processing)
+        async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true, altString: '' }) {
             activeStreamTitle = title;
-            currentUrlRetryCount = 0; // Reset retries
+            currentUrlRetryCount = 0;
 
-            // Gather candidate channels of same group to build alternative server pool
-            const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|source|\d+/g, '').trim() : '';
-            const pool = [...masterChannelDb.sports, ...masterChannelDb.premium, ...masterChannelDb.global, ...masterChannelDb.imported];
-            const candidates = [url];
+            let candidates = [url];
+            if (options.altString) {
+                const splitAlts = options.altString.split(',').map(s => s.trim()).filter(Boolean);
+                splitAlts.forEach(a => {
+                    if (!candidates.includes(a)) candidates.push(a);
+                });
+            }
 
-            pool.forEach(ch => {
-                if (ch.url && !candidates.includes(ch.url)) {
-                    if (cleanTitle && ch.title && ch.title.toLowerCase().includes(cleanTitle)) {
-                        candidates.push(ch.url);
+            // Text match fallbacks
+            if (candidates.length === 1) {
+                const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|source|\d+/g, '').trim() : '';
+                const pool = [...masterChannelDb.sports, ...masterChannelDb.premium, ...masterChannelDb.global, ...masterChannelDb.imported];
+                pool.forEach(ch => {
+                    if (ch.url && !candidates.includes(ch.url)) {
+                        if (cleanTitle && ch.title && ch.title.toLowerCase().includes(cleanTitle)) {
+                            candidates.push(ch.url);
+                        }
                     }
-                }
-            });
+                });
+            }
 
             activeStreamList = candidates;
 
-            // Perform rapid server latency check (Fastest Server Selection)
             if (options.autoSelectFastest && activeStreamList.length > 1) {
                 spinner.classList.remove('hidden');
                 spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 5)} nodes for fastest connection...`;
@@ -496,7 +750,7 @@
                     const sorted = await probeAndOrderServers(activeStreamList, 5);
                     activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
                 } catch (e) {
-                    console.warn("Server probing failed, using default playlist index.");
+                    console.warn("Probe network rejected. Initializing default.");
                 } finally {
                     spinner.classList.add('hidden');
                 }
@@ -507,7 +761,6 @@
             playSelectedSource({ autoplay: options.autoplay });
         }
 
-        // Render Server Buttons underneath Video Player (Multi-source Panel)
         function renderServerButtons() {
             const container = document.getElementById('servers-container');
             container.innerHTML = '';
@@ -528,14 +781,13 @@
                 btn.onclick = (ev) => {
                     ev.stopPropagation();
                     activeStreamIdx = idx;
-                    currentUrlRetryCount = 0; // Reset retries on manual click
+                    currentUrlRetryCount = 0;
                     renderServerButtons();
                     playSelectedSource({ autoplay: true });
                 };
                 container.appendChild(btn);
             });
 
-            // Fast reload button
             const reloadBtn = document.createElement('button');
             reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 transition font-bold';
             reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Node`;
@@ -546,7 +798,6 @@
             container.appendChild(reloadBtn);
         }
 
-        // Play Selected Video Node
         async function playSelectedSource(opts = { autoplay: true }) {
             if (!activeStreamList || activeStreamList.length === 0) return;
             const liveUrl = activeStreamList[activeStreamIdx];
@@ -560,20 +811,19 @@
                 hlsInstance = null;
             }
 
-            // HLS setup utility
             const runHlsInstance = async (srcUrl) => {
                 if (Hls.isSupported()) {
                     hlsInstance = new Hls({
-                        maxBufferLength: 30,             // Buffering increased to 60 seconds for stable connection
-                        maxMaxBufferLength: 60,          // Maximum buffer of 60 seconds to buffer-out temporary drops
-                        backBufferLength: 15,            // Save 15 seconds of back buffer
-                        liveSyncDurationCount: 3,        
-                        enableWorker: true,              // Use web workers to prevent UI thread lag
-                        lowLatencyMode: false,           // Disabled Low Latency for High Traffic buffering safety
-                        manifestLoadingTimeOut: 10000,   // Wait 10 seconds for manifest load
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
+                        backBufferLength: 15,
+                        liveSyncDurationCount: 3,
+                        enableWorker: true,
+                        lowLatencyMode: false,
+                        manifestLoadingTimeOut: 10000,
                         levelLoadingTimeOut: 10000,
                         fragLoadingTimeOut: 15000,
-                        fragLoadingMaxRetry: 5,          // Retry fragments internally instead of immediately triggering failover
+                        fragLoadingMaxRetry: 5,
                         manifestLoadingMaxRetry: 5
                     });
 
@@ -604,20 +854,19 @@
                         }
                     }
 
-                    // Auto-failover handler for mid-stream breaks
                     hlsInstance.on(Hls.Events.ERROR, (event, data) => {
                         if (data && data.fatal) {
                             switch (data.type) {
                                 case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.warn("Fatal Network error encountered. Attempting dynamic recovery...");
-                                    hlsInstance.startLoad(); // Try to reload manifest internally first
+                                    console.warn("Fatal Network error. Attempting auto recovery...");
+                                    hlsInstance.startLoad();
                                     currentUrlRetryCount++;
                                     if (currentUrlRetryCount > MAX_RETRIES_PER_URL) {
                                         triggerAutoFailover();
                                     }
                                     break;
                                 case Hls.ErrorTypes.MEDIA_ERROR:
-                                    console.warn("Media error encountered. Attempting recovery...");
+                                    console.warn("Fatal Media block error. Re-syncing buffers...");
                                     hlsInstance.recoverMediaError();
                                     break;
                                 default:
@@ -628,7 +877,6 @@
                     });
                     return true;
                 } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Apple Safari native player
                     video.src = srcUrl;
                     video.load();
                     
@@ -648,36 +896,32 @@
                 return false;
             };
 
-            // Attempt 1: Direct Fetch (Fastest & direct connection)
+            // Option 1: Direct Link First
             try {
                 await runHlsInstance(liveUrl);
                 return;
             } catch (err) {
-                console.warn("Direct connection timeout. Routing through secure high-speed proxy...");
+                console.warn("Direct connection timeout. Routing through proxy routing node...");
             }
 
-            // Attempt 2: Route through proxies sequentially (Failover Proxies)
+            // Option 2: Routing Proxies Sequential Fallback
             for (let i = 0; i < CORS_PROXIES.length; i++) {
                 const proxiedUrl = CORS_PROXIES[i](liveUrl);
                 try {
                     await runHlsInstance(proxiedUrl);
                     return;
                 } catch(e) {
-                    console.warn(`Proxy node ${i} routing failed.`);
+                    console.warn(`Proxy connection ${i} failed.`);
                 }
             }
 
-            // Attempt 3: Switch to alternative server
+            // Option 3: Failover fallback
             triggerAutoFailover();
         }
 
-        // Trigger Auto Failover Switch (Auto switches Server if crashes)
         function triggerAutoFailover() {
             const now = Date.now();
-            
-            // Anti-Looping Protection: Check if failover is triggered too frequently
             if (now - lastFailoverTime < FAILOVER_COOLDOWN_MS) {
-                console.warn("Anti-Loop: Failover request throttled to prevent frequent reloading.");
                 setTimeout(() => {
                     triggerAutoFailover();
                 }, FAILOVER_COOLDOWN_MS);
@@ -685,24 +929,21 @@
             }
 
             lastFailoverTime = now;
-            currentUrlRetryCount = 0; // Reset retries
+            currentUrlRetryCount = 0;
 
             if (activeStreamList.length > 1) {
                 activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
-                console.log(`Failsafe Activated: Switching to Backup Source ${activeStreamIdx + 1}`);
+                console.log(`Failsafe Active: Redirecting to Backup Source ${activeStreamIdx + 1}`);
                 renderServerButtons();
                 playSelectedSource({ autoplay: true });
             } else {
-                // If there's only 1 URL in database, rotate proxies directly
                 currentProxyIdx = (currentProxyIdx + 1) % CORS_PROXIES.length;
-                const rotatedProxyUrl = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
-                console.log("No alternative server found. Re-routing sole connection...");
+                console.log("No extra backups on cloud. Re-probing proxies...");
                 activeStreamIdx = 0;
                 playSelectedSource({ autoplay: true });
             }
         }
 
-        // Force reload and re-probe fastest server
         async function quickReloadPlayer() {
             spinner.classList.remove('hidden');
             spinnerText.textContent = 'Probing channels for fast response...';
@@ -721,7 +962,7 @@
             }
         }
 
-        // Custom M3U / Channel Importer (SportsX TV Style)
+        // Local Storage Sync (Manual Importer)
         async function importChannelData() {
             const nameInp = document.getElementById('m3u-title');
             const catInp = document.getElementById('m3u-category');
@@ -739,7 +980,6 @@
             gridLoader.classList.remove('hidden');
 
             try {
-                // Check if the input is a full M3U Playlist or a single stream M3U8 Link
                 if (url.includes('.m3u') || (url.includes('.m3u8') && !url.includes('index.m3u8') && !url.includes('chunks.m3u8'))) {
                     const rawM3u = await (await fetchViaProxies(url, { timeout: 8000 })).text();
                     const parsedChannels = parseM3uString(rawM3u);
@@ -755,9 +995,9 @@
                         ch.group = name || ch.group || category;
                     });
 
-                    masterChannelDb.imported = [...masterChannelDb.imported, ...parsedChannels];
+                    const savedLocal = getLocalImportedPlaylists();
+                    localStorage.setItem('sportsx_imported_v2', JSON.stringify([...savedLocal, ...parsedChannels]));
                 } else {
-                    // Single Streaming Link Import
                     if (!name) {
                         alert("সিঙ্গেল চ্যানেলের জন্য দয়া করে একটি নাম দিন!");
                         gridLoader.classList.add('hidden');
@@ -770,10 +1010,13 @@
                         url: url,
                         logo: ''
                     };
-                    masterChannelDb.imported.push(newChannel);
+                    const savedLocal = getLocalImportedPlaylists();
+                    savedLocal.push(newChannel);
+                    localStorage.setItem('sportsx_imported_v2', JSON.stringify(savedLocal));
                 }
 
-                saveImportedPlaylists();
+                loadImportedPlaylists();
+                mergeAllDatabases();
 
                 nameInp.value = '';
                 catInp.value = '';
@@ -790,30 +1033,30 @@
             }
         }
 
-        // Local Storage Sync (Permanently Saves Imported Playlists)
-        function saveImportedPlaylists() {
-            localStorage.setItem('sportsx_imported_v2', JSON.stringify(masterChannelDb.imported));
+        function getLocalImportedPlaylists() {
+            const saved = localStorage.getItem('sportsx_imported_v2');
+            return saved ? JSON.parse(saved) : [];
         }
 
         function loadImportedPlaylists() {
-            const saved = localStorage.getItem('sportsx_imported_v2');
-            masterChannelDb.imported = saved ? JSON.parse(saved) : [];
+            masterChannelDb.imported = getLocalImportedPlaylists();
         }
 
         function removeImportedChannel(id) {
-            masterChannelDb.imported = masterChannelDb.imported.filter(ch => ch.id !== id);
-            saveImportedPlaylists();
-            renderChannelsList();
+            const updated = getLocalImportedPlaylists().filter(ch => ch.id !== id);
+            localStorage.setItem('sportsx_imported_v2', JSON.stringify(updated));
+            loadImportedPlaylists();
+            mergeAllDatabases();
         }
 
-        // Save and Sync GitHub Config
+        // Save and Sync GitHub Local Config
         function saveGitHubSyncConfig() {
             const url = document.getElementById('github-sync-url').value.trim();
             if (url) {
                 localStorage.setItem('sportsx_github_sync_url', url);
                 syncGitHubPlaylists(url).then(() => {
                     alert("গিটহাব অটো-সিঙ্ক কনফিগারেশন সফলভাবে সেভ এবং সিঙ্ক হয়েছে!");
-                    if (activeTab === 'imported') renderChannelsList();
+                    if (activeTab === 'imported') mergeAllDatabases();
                 });
             } else {
                 localStorage.removeItem('sportsx_github_sync_url');
@@ -828,7 +1071,211 @@
             }
         }
 
-        // UI Toggler helper
+
+        // ==========================================
+        //  FIREBASE CLOUD CHANNEL MANAGEMENT (ADMIN)
+        // ==========================================
+
+        // Admin Auth Login Handler
+        async function handleAdminLogin() {
+            const email = document.getElementById('admin-email').value.trim();
+            const pass = document.getElementById('admin-password').value;
+            
+            if (!email || !pass) {
+                alert("Please enter both login credentials.");
+                return;
+            }
+            try {
+                await auth.signInWithEmailAndPassword(email, pass);
+                alert("Session Authorized Successfully!");
+            } catch (err) {
+                alert("Authentication Failed: " + err.message);
+            }
+        }
+
+        // Admin Logout Handler
+        async function handleAdminLogout() {
+            try {
+                await auth.signOut();
+                alert("Logged out of the secure dashboard.");
+                toggleModal('admin-modal');
+                resetStreamForm();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Firebase Storage Logo Upload
+        async function uploadLogoToStorage() {
+            const fileInput = document.getElementById('logo-file');
+            const file = fileInput.files[0];
+            const progressEl = document.getElementById('logo-upload-progress');
+            if (!file) return;
+
+            progressEl.textContent = "Uploading image to storage...";
+            const ref = storage.ref(`logos/${Date.now()}_${file.name}`);
+            try {
+                const snap = await ref.put(file);
+                const url = await snap.ref.getDownloadURL();
+                document.getElementById('stream-logo').value = url;
+                progressEl.textContent = "Upload Complete!";
+            } catch(e) {
+                progressEl.textContent = "Upload Failed: " + e.message;
+            }
+        }
+
+        // Save & Sync Firestore Document
+        async function saveStreamToFirestore() {
+            const title = document.getElementById('stream-name').value.trim();
+            const group = document.getElementById('stream-group').value.trim();
+            const category = document.getElementById('stream-category').value;
+            const url = document.getElementById('stream-url').value.trim();
+            const altRaw = document.getElementById('stream-backups').value.trim();
+            const logo = document.getElementById('stream-logo').value.trim();
+
+            if (!title || !url) {
+                alert("Stream Title and Primary URL are required!");
+                return;
+            }
+
+            const altUrls = altRaw ? altRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+            const payload = {
+                title,
+                group: group || 'Cloud Live Broadcast',
+                category,
+                url,
+                altUrls,
+                logo: logo || ''
+            };
+
+            try {
+                if (editingStreamId) {
+                    await db.collection("channels").doc(editingStreamId).update(payload);
+                    alert("Stream node successfully updated!");
+                } else {
+                    await db.collection("channels").add(payload);
+                    alert("New stream node uploaded to Firestore!");
+                }
+                resetStreamForm();
+            } catch (e) {
+                alert("Error synchronizing: " + e.message);
+            }
+        }
+
+        // Load channel data back into admin form for editing
+        async function loadChannelToForm(id) {
+            const channel = cloudChannelsList.find(c => c.id === id);
+            if (!channel) return;
+
+            editingStreamId = id;
+            document.getElementById('form-title').innerHTML = `<i class="fa-solid fa-pen-to-square mr-1 text-emerald-400"></i> Edit Stream Node`;
+            document.getElementById('stream-save-btn').textContent = "Update Stream Node";
+
+            document.getElementById('stream-name').value = channel.title || '';
+            document.getElementById('stream-group').value = channel.group || '';
+            document.getElementById('stream-category').value = channel.category || 'sports';
+            document.getElementById('stream-url').value = channel.url || '';
+            document.getElementById('stream-backups').value = channel.altUrls ? channel.altUrls.join(', ') : '';
+            document.getElementById('stream-logo').value = channel.logo || '';
+            
+            // Open admin modal directly
+            toggleModal('admin-modal');
+        }
+
+        // Clear Admin Forms
+        function resetStreamForm() {
+            editingStreamId = null;
+            document.getElementById('form-title').innerHTML = `<i class="fa-solid fa-square-plus mr-1"></i> Add Cloud Stream`;
+            document.getElementById('stream-save-btn').textContent = "Save Stream Node";
+
+            document.getElementById('stream-name').value = '';
+            document.getElementById('stream-group').value = '';
+            document.getElementById('stream-url').value = '';
+            document.getElementById('stream-backups').value = '';
+            document.getElementById('stream-logo').value = '';
+            document.getElementById('logo-file').value = '';
+            document.getElementById('logo-upload-progress').textContent = '';
+        }
+
+        // Delete documents from Firestore
+        async function deleteChannelFromFirestore(id) {
+            if (!confirm("Are you sure you want to permanently delete this stream?")) return;
+            try {
+                await db.collection("channels").doc(id).delete();
+                alert("Stream deleted from database.");
+            } catch(e) {
+                alert("Error deleting file: " + e.message);
+            }
+        }
+
+        // Global Alert Panel update
+        async function saveGlobalAlertSettings() {
+            const message = document.getElementById('config-alert-msg').value.trim();
+            const active = document.getElementById('config-alert-active').checked;
+
+            try {
+                await db.collection("settings").doc("globalAlert").set({ message, active });
+                alert("Live banner alert settings saved on Firestore.");
+            } catch(e) {
+                alert("Settings save failed: " + e.message);
+            }
+        }
+
+        // Database Export Engine
+        async function exportFirestoreDatabase() {
+            try {
+                const snapshot = await db.collection("channels").get();
+                const channels = [];
+                snapshot.forEach(doc => {
+                    channels.push({ id: doc.id, ...doc.data() });
+                });
+
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(channels, null, 2));
+                const dlAnchor = document.createElement('a');
+                dlAnchor.setAttribute("href", dataStr);
+                dlAnchor.setAttribute("download", `sportsx_cloud_backup_${Date.now()}.json`);
+                document.body.appendChild(dlAnchor);
+                dlAnchor.click();
+                dlAnchor.remove();
+            } catch (e) {
+                alert("Failed to export database: " + e.message);
+            }
+        }
+
+        // Database Restore & Merge Engine
+        async function importFirestoreDatabase(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (!Array.isArray(parsed)) {
+                        alert("Invalid backup configuration format.");
+                        return;
+                    }
+
+                    if (!confirm(`Are you sure you want to merge ${parsed.length} items with the current cloud structure?`)) return;
+
+                    const batch = db.batch();
+                    parsed.forEach(item => {
+                        const { id, ...data } = item;
+                        const ref = db.collection("channels").doc();
+                        batch.set(ref, data);
+                    });
+                    
+                    await batch.commit();
+                    alert(`Merge Complete: ${parsed.length} items added to Firestore.`);
+                } catch(err) {
+                    alert("Import Failed: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Toggle Element utility
         function toggleElement(id) {
             const el = document.getElementById(id);
             if (el.classList.contains('hidden')) {
@@ -838,7 +1285,17 @@
             }
         }
 
-        // Autoplay Overlay Utility
+        // Toggle Modal utility
+        function toggleModal(id) {
+            const el = document.getElementById(id);
+            if (el.classList.contains('hidden')) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        // Autoplay Overlay Utilities
         function showAutoplayOverlay() {
             if (autoplayOverlay) {
                 autoplayOverlay.style.display = 'flex';
@@ -848,7 +1305,7 @@
                         await video.play();
                         hideAutoplayOverlay();
                     } catch (err) {
-                        console.warn("Autoplay blocked by user-agent");
+                        console.warn("Autoplay still blocked by platform agents.");
                     }
                 };
             }
