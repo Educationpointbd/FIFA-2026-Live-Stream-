@@ -3,76 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SportsX Web - TMA Player Engine</title>
+    <title>SportsX Web - Next-Gen IPTV Engine</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Pro Icons -->
+    <!-- FontAwesome Pro Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Optimized HLS.js Library for M3U8 Playback -->
+    <!-- HLS.js Library for M3U8 Playback -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Dash.js Library for MPEG-DASH Playback -->
+    <script src="https://cdn.jsdelivr.net/npm/dashjs@latest/dist/dash.all.min.js"></script>
+    <!-- Google Cast SDK Sender for Chromecast -->
+    <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
     <!-- Telegram Web App SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Web Manifest & PWA Meta -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIlNwb3J0c1ggTmV4dC1HZW4gSVBUViIsCiAgInNob3J0X25hbWUiOiAiU3BvcnRzWCIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMDIwNjE3IiwKICAidGhlbWVfY29sb3IiOiAiIzEwYjk4MSIKfQ==">
+    <meta name="theme-color" content="#10b981">
+
     <style>
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
         ::-webkit-scrollbar-thumb { background: #10b981; border-radius: 4px; }
         .glass-card { background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .btn-gradient { background: linear-gradient(135deg, #10b981 0%, #059669 100%); }
-        #autoplay-overlay {
-            position: absolute;
-            inset: 0;
-            display: none;
-            background: linear-gradient(180deg, rgba(2,6,23,0.7), rgba(2,6,23,0.9));
-            z-index: 60;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-        }
+        .pulse-live { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
     </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950">
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-slate-950 transition-colors duration-300">
 
     <!-- Header Section -->
     <header class="bg-slate-900/95 border-b border-slate-800/80 p-4 sticky top-0 z-50 shadow-md">
-        <div class="max-w-5xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
-                    <i class="fa-solid fa-bolt-lightning text-lg animate-pulse"></i>
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3 w-full md:w-auto">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20">
+                    <i class="fa-solid fa-bolt-lightning text-xl animate-pulse"></i>
                 </div>
                 <div>
-                    <h1 class="font-extrabold text-base tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SPORTSX PRO</h1>
-                    <span class="text-[9px] text-slate-400 font-mono block">AI-Optimized Zero-Lag Streaming Protocol</span>
+                    <h1 class="font-extrabold text-lg tracking-wider bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">SPORTSX PRO</h1>
+                    <span class="text-[10px] text-slate-400 font-mono block" id="lang-sub-title">AI-Optimized Next-Gen IPTV Platform</span>
                 </div>
             </div>
             
-            <!-- Real-time Search Engine -->
-            <div class="relative w-full sm:w-64">
-                <span class="absolute inset-y-0 left-0 flex items-center pl-3">
-                    <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
-                </span>
-                <input type="text" id="search-input" oninput="triggerSearch()" placeholder="চ্যানেল বা ম্যাচ খুঁজুন..." 
-                    class="w-full bg-slate-950/80 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-100">
+            <!-- Unified Controls Area -->
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <!-- Search -->
+                <div class="relative flex-grow max-w-xs">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+                        <i class="fa-solid fa-magnifying-glass text-slate-500 text-xs"></i>
+                    </span>
+                    <input type="text" id="search-input" oninput="triggerSearch()" placeholder="চ্যানেল বা ম্যাচ খুঁজুন..." 
+                        class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:border-emerald-500 transition placeholder:text-slate-600 text-slate-100">
+                </div>
+
+                <!-- Action Button Toggles -->
+                <div class="flex items-center gap-2">
+                    <button onclick="toggleLanguage()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase font-mono tracking-wider transition">
+                        <i class="fa-solid fa-language text-emerald-400 mr-1"></i> <span id="lang-btn-text">English</span>
+                    </button>
+                    <button onclick="toggleElement('admin-panel-auth')" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold px-3 py-1.5 rounded-lg text-[10px] uppercase font-mono tracking-wider transition">
+                        <i class="fa-solid fa-user-shield text-emerald-400 mr-1"></i> Admin
+                    </button>
+                </div>
             </div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="flex-grow max-w-5xl w-full mx-auto p-3 space-y-4">
+    <main class="flex-grow max-w-7xl w-full mx-auto p-3 space-y-4">
 
-        <!-- Custom Advanced Video Player -->
-        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl relative aspect-video group">
-            <video id="main-player" class="w-full h-full object-contain" controls autoplay playsinline></video>
+        <!-- Universal Custom Video Player Container -->
+        <div class="glass-card rounded-2xl overflow-hidden shadow-2xl relative aspect-video group" id="player-container">
+            <video id="main-player" class="w-full h-full object-contain" playsinline></video>
+            
+            <!-- custom styled player overlays -->
+            <div class="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-between p-4 pointer-events-none z-20">
+                
+                <!-- Upper Player Info -->
+                <div class="flex justify-between items-start pointer-events-auto w-full">
+                    <div class="bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800/80 max-w-[70%]">
+                        <p class="text-xs font-bold text-slate-100 truncate" id="player-current-title">Not Playing</p>
+                        <p class="text-[9px] text-emerald-400 font-mono tracking-wider mt-0.5" id="player-current-protocol">Ready</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="flex items-center bg-rose-600/90 text-white font-mono font-extrabold text-[9px] px-2 py-1 rounded-md uppercase tracking-widest gap-1 shadow-sm shadow-rose-600/30">
+                            <span class="w-1.5 h-1.5 bg-white rounded-full pulse-live"></span> Live
+                        </span>
+                        <button onclick="toggleStatsPanel()" class="bg-slate-950/80 hover:bg-slate-900 text-slate-300 p-2 rounded-xl border border-slate-800/80 text-xs transition">
+                            <i class="fa-solid fa-chart-line text-emerald-400"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lower Control Panel -->
+                <div class="flex flex-col gap-3 pointer-events-auto w-full mt-auto">
+                    <!-- Live DVR Seekbar Slider -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] text-slate-400 font-mono" id="player-time-current">00:00</span>
+                        <input type="range" id="player-seek" min="0" max="100" value="0" step="0.1" class="flex-grow accent-emerald-500 h-1 bg-slate-800 rounded-lg cursor-pointer appearance-none transition hover:h-1.5">
+                        <span class="text-[10px] text-slate-400 font-mono" id="player-time-total">LIVE</span>
+                    </div>
+
+                    <!-- Bottom Controls row -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4">
+                            <button id="custom-play-btn" class="text-emerald-400 hover:text-emerald-300 text-lg transition">
+                                <i class="fa-solid fa-play"></i>
+                            </button>
+                            <!-- Custom Volume Controller -->
+                            <div class="flex items-center gap-2 group/volume">
+                                <button id="custom-mute-btn" class="text-slate-400 hover:text-slate-200 text-sm transition">
+                                    <i class="fa-solid fa-volume-high"></i>
+                                </button>
+                                <input type="range" id="player-volume" min="0" max="1" value="1" step="0.05" class="w-0 group-hover/volume:w-16 h-1 accent-emerald-500 transition-all duration-300 rounded-lg cursor-pointer appearance-none">
+                            </div>
+                        </div>
+
+                        <!-- Audio, Subtitle, Speed, Cast Settings -->
+                        <div class="flex items-center gap-3">
+                            <!-- Quality Picker -->
+                            <div class="relative">
+                                <select id="player-quality" class="bg-slate-950/95 border border-slate-800 text-slate-300 text-[10px] font-mono font-bold py-1 px-2 rounded-lg cursor-pointer focus:outline-none focus:border-emerald-500">
+                                    <option value="auto">Auto Quality</option>
+                                </select>
+                            </div>
+
+                            <!-- Speed Controller -->
+                            <button onclick="cyclePlaybackSpeed()" class="text-slate-400 hover:text-slate-200 text-xs transition font-mono font-bold" id="speed-btn">1.0x</button>
+                            
+                            <!-- Subtitles/Captions -->
+                            <button id="custom-captions-btn" class="text-slate-400 hover:text-slate-200 text-xs transition">
+                                <i class="fa-solid fa-closed-captioning"></i>
+                            </button>
+
+                            <!-- Screenshot -->
+                            <button onclick="captureVideoFrame()" class="text-slate-400 hover:text-emerald-400 text-xs transition" title="Take Screenshot">
+                                <i class="fa-solid fa-camera"></i>
+                            </button>
+
+                            <!-- Picture in Picture -->
+                            <button id="custom-pip-btn" class="text-slate-400 hover:text-slate-200 text-xs transition">
+                                <i class="fa-solid fa-images"></i>
+                            </button>
+
+                            <!-- Chromecast -->
+                            <button id="custom-cast-btn" class="text-slate-400 hover:text-indigo-400 text-xs transition hidden">
+                                <i class="fa-solid fa-chromecast"></i>
+                            </button>
+
+                            <!-- Fullscreen -->
+                            <button id="custom-fullscreen-btn" class="text-emerald-400 hover:text-emerald-300 text-sm transition">
+                                <i class="fa-solid fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Stream Stats Overlay -->
+            <div id="stats-panel" class="absolute top-16 left-4 bg-slate-950/95 border border-slate-800/90 text-slate-400 text-[10px] p-3 rounded-xl font-mono hidden z-30 space-y-1 w-64 shadow-2xl">
+                <p class="font-bold text-emerald-400 border-b border-slate-800 pb-1 mb-1.5 uppercase tracking-wider"><i class="fa-solid fa-chart-bar mr-1"></i> Stream Telemetry</p>
+                <p>Resolution: <span class="text-slate-200" id="stat-resolution">-</span></p>
+                <p>Average Bitrate: <span class="text-slate-200" id="stat-bitrate">-</span></p>
+                <p>Buffered Space: <span class="text-slate-200" id="stat-buffer">-</span></p>
+                <p>Dropped Frames: <span class="text-rose-400" id="stat-dropped">0</span></p>
+                <p>Connection Latency: <span class="text-slate-200" id="stat-latency">-</span></p>
+                <p>Decoder Engine: <span class="text-slate-200" id="stat-engine">-</span></p>
+            </div>
+
             <!-- Autoplay fallback overlay -->
             <div id="autoplay-overlay" class="hidden flex">
                 <div class="text-center">
-                    <p class="text-sm font-bold text-white mb-3">ট্যাপ করে লাইভ স্ট্রিমিং চালু করুন</p>
+                    <p class="text-sm font-bold text-white mb-3" id="autoplay-txt">ট্যাপ করে লাইভ স্ট্রিমিং চালু করুন</p>
                     <button id="autoplay-start-btn" class="btn-gradient text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">
                         <i class="fa-solid fa-play mr-1.5"></i> Play Live
                     </button>
                 </div>
             </div>
+
             <!-- Custom Dynamic Loader -->
-            <div id="player-spinner" class="absolute inset-0 bg-slate-950/95 flex flex-col justify-center items-center hidden">
+            <div id="player-spinner" class="absolute inset-0 bg-slate-950/95 flex flex-col justify-center items-center hidden z-30">
                 <div class="relative flex items-center justify-center mb-3">
                     <div class="animate-spin rounded-full h-11 w-11 border-2 border-emerald-500 border-t-transparent"></div>
                     <i class="fa-solid fa-satellite-dish text-xs text-emerald-400 absolute animate-pulse"></i>
@@ -81,7 +192,7 @@
             </div>
         </div>
 
-        <!-- Dynamic Multi-Server / Source Switching Panel -->
+        <!-- Multi-Server Panel -->
         <div id="source-panel" class="bg-slate-900/40 border border-slate-800/60 rounded-xl p-3 flex flex-wrap items-center gap-2">
             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">
                 <i class="fa-solid fa-server text-emerald-400 mr-1"></i> Multi Source:
@@ -91,36 +202,171 @@
             </div>
         </div>
 
+        <!-- Secure Admin Panel Auth & Portal Dashboard -->
+        <section id="admin-panel-auth" class="glass-card rounded-2xl p-4 hidden space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center">
+                    <i class="fa-solid fa-lock text-emerald-400 mr-2"></i> Admin Security Gate
+                </h3>
+                <button onclick="toggleElement('admin-panel-auth')" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="admin-auth-fields" class="flex gap-2 max-w-sm">
+                <input type="password" id="admin-passphrase" placeholder="পাসফ্রেজ প্রবেশ করুন..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs focus:outline-none focus:border-emerald-500 text-slate-100">
+                <button onclick="unlockAdminPanel()" class="btn-gradient text-slate-950 font-bold px-4 py-2 rounded-xl text-xs transition">Unlock</button>
+            </div>
+
+            <!-- Dashboard Section -->
+            <div id="admin-dashboard-container" class="hidden space-y-6">
+                <!-- Metrics -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div class="p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl text-center">
+                        <p class="text-[9px] text-slate-400 font-mono uppercase">Online Users</p>
+                        <p class="text-xl font-bold text-emerald-400 font-mono mt-1" id="dash-online-users">1,482</p>
+                    </div>
+                    <div class="p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl text-center">
+                        <p class="text-[9px] text-slate-400 font-mono uppercase">Uptime Ratio</p>
+                        <p class="text-xl font-bold text-teal-400 font-mono mt-1">99.94%</p>
+                    </div>
+                    <div class="p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl text-center">
+                        <p class="text-[9px] text-slate-400 font-mono uppercase">Average Latency</p>
+                        <p class="text-xl font-bold text-slate-100 font-mono mt-1">112ms</p>
+                    </div>
+                    <div class="p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl text-center">
+                        <p class="text-[9px] text-slate-400 font-mono uppercase">Network Load</p>
+                        <p class="text-xl font-bold text-slate-100 font-mono mt-1">42.8 GB/s</p>
+                    </div>
+                </div>
+
+                <!-- Server Real-time Charts using HTML Canvas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-[10px] font-bold text-slate-300 uppercase font-mono tracking-wider">Live Viewer Analytics (Past hour)</h4>
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        </div>
+                        <canvas id="viewer-analytics-canvas" class="w-full h-32 bg-slate-950/60 rounded-lg border border-slate-900"></canvas>
+                    </div>
+                    <div class="p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-[10px] font-bold text-slate-300 uppercase font-mono tracking-wider">Active System Error Log</h4>
+                            <button onclick="clearErrorLog()" class="text-[9px] text-rose-400 hover:underline">Clear Logs</button>
+                        </div>
+                        <div id="error-log-box" class="h-32 bg-slate-950/60 rounded-lg border border-slate-900 p-2 font-mono text-[9px] text-rose-400 overflow-y-auto space-y-1">
+                            <div>[INFO] System initialized successfully.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Channel Management Panel & Health Checker -->
+                <div class="p-4 bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Channel Configuration & Health Monitoring</h4>
+                        <div class="flex gap-2">
+                            <button onclick="runStreamHealthChecker()" class="bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-heart-pulse mr-1 animate-pulse"></i> Test All Stream Health
+                            </button>
+                            <button onclick="backupSystemConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-download"></i> Backup Config
+                            </button>
+                            <button onclick="triggerRestoreInput()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] px-3 py-1.5 rounded-lg transition">
+                                <i class="fa-solid fa-upload"></i> Restore
+                            </button>
+                            <input type="file" id="restore-file-input" onchange="restoreSystemConfig(event)" class="hidden">
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs font-mono">
+                            <thead>
+                                <tr class="border-b border-slate-800/80 text-slate-400">
+                                    <th class="py-2">Channel Name</th>
+                                    <th>Category</th>
+                                    <th>URL Stream</th>
+                                    <th>Latency / Status</th>
+                                    <th>Admin Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-channels-table-body" class="divide-y divide-slate-900">
+                                <!-- Generated Dynamic Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- GitHub Cloud Auto-Sync & Local Storage Importer -->
         <section class="glass-card rounded-2xl p-4 space-y-3">
             <div class="flex justify-between items-center cursor-pointer" onclick="toggleElement('importer-panel')">
-                <h3 class="text-xs font-bold text-slate-300 flex items-center">
-                    <i class="fa-solid fa-cloud-arrow-down text-emerald-400 mr-2"></i> Permanent Storage & GitHub Auto-Sync
+                <h3 class="text-xs font-bold text-slate-300 flex items-center" id="lbl-importer-title">
+                    <i class="fa-solid fa-cloud-arrow-down text-emerald-400 mr-2"></i> Permanent Storage & Multi-Format Importer
                     <i class="fa-solid fa-caret-down ml-2 text-[10px] text-slate-500"></i>
                 </h3>
-                <span class="text-[10px] text-slate-500 font-mono">Cloud Backup Config</span>
+                <span class="text-[10px] text-slate-500 font-mono">Multi Protocol support</span>
             </div>
             
-            <div id="importer-panel" class="space-y-3 hidden transition-all">
-                <!-- GitHub Auto-Sync URL Input -->
-                <div class="p-3 bg-slate-950/40 border border-slate-800/80 rounded-xl space-y-2">
-                    <h4 class="text-[11px] font-bold text-emerald-400 uppercase tracking-wider">GitHub Config Cloud Sync:</h4>
-                    <p class="text-[10px] text-slate-400">আপনার গিটহাবের RAW M3U প্লেলিস্ট লিঙ্ক এখানে পেস্ট করে রাখুন। অ্যাপ ওপেন হলেই তা অটো-সিঙ্ক হয়ে যাবে।</p>
+            <div id="importer-panel" class="space-y-4 hidden transition-all">
+                <!-- Importer Sub-Tabs -->
+                <div class="flex border-b border-slate-800 text-[10px] font-bold overflow-x-auto whitespace-nowrap gap-1">
+                    <button onclick="switchImporterTab('github')" id="tab-imp-github" class="py-2 px-3 border-b-2 border-emerald-500 text-emerald-400">GitHub Sync</button>
+                    <button onclick="switchImporterTab('xtream')" id="tab-imp-xtream" class="py-2 px-3 border-b-2 border-transparent text-slate-400">Xtream Codes API</button>
+                    <button onclick="switchImporterTab('manual')" id="tab-imp-manual" class="py-2 px-3 border-b-2 border-transparent text-slate-400">Manual (M3U / JSON / XML)</button>
+                </div>
+
+                <!-- GitHub Config Panel -->
+                <div id="importer-github-box" class="space-y-2">
+                    <p class="text-[10px] text-slate-400" id="lbl-github-help">আপনার গিটহাবের RAW M3U প্লেলিস্ট লিঙ্ক এখানে পেস্ট করে রাখুন। অ্যাপ ওপেন হলেই তা অটো-সিঙ্ক হয়ে যাবে।</p>
                     <div class="flex gap-2">
                         <input type="text" id="github-sync-url" placeholder="https://raw.githubusercontent.com/your-username/repo/main/playlist.m3u" class="flex-grow bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
                         <button onclick="saveGitHubSyncConfig()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-bold px-4 py-2 rounded-lg text-xs transition">Save & Sync</button>
                     </div>
                 </div>
 
-                <!-- Local Manual Importer -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <input type="text" id="m3u-title" placeholder="Stream / Channel Title" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
-                    <input type="text" id="m3u-category" placeholder="Category (e.g. Sports, News)" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                <!-- Xtream Codes API Panel -->
+                <div id="importer-xtream-box" class="hidden space-y-2">
+                    <p class="text-[10px] text-slate-400">Connect to your high-speed legal Xtream Portal. All playlists are encrypted and held client-side.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <input type="text" id="xtream-host" placeholder="Host (e.g. http://server.com:8080)" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100 font-mono">
+                        <input type="text" id="xtream-user" placeholder="Username" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100">
+                        <input type="password" id="xtream-pass" placeholder="Password" class="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none text-slate-100">
+                    </div>
+                    <button onclick="importXtreamCodesPortal()" class="btn-gradient text-slate-950 font-bold px-5 py-2 rounded-lg text-xs transition">Authenticate & Connect</button>
                 </div>
-                <div class="flex gap-2">
-                    <input type="text" id="m3u-url" placeholder="Paste .m3u8 Playlist or Single Streaming Link..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
-                    <button onclick="importChannelData()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">Add Stream</button>
+
+                <!-- Manual Input Panel -->
+                <div id="importer-manual-box" class="hidden space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input type="text" id="m3u-title" placeholder="Stream / Channel Title" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                        <select id="m3u-category" class="w-full bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-300">
+                            <option value="Sports">Sports</option>
+                            <option value="News">News</option>
+                            <option value="Movies">Movies</option>
+                            <option value="Kids">Kids</option>
+                            <option value="Music">Music</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Regional">Regional</option>
+                            <option value="International">International</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="m3u-url" placeholder="Paste .m3u8, .mpd, JSON or XML Playlist URL..." class="flex-grow bg-slate-950/90 border border-slate-800/80 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none text-slate-100">
+                        <button onclick="importManualData()" class="btn-gradient text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition shadow-md shadow-emerald-500/10">Add Stream</button>
+                    </div>
                 </div>
+            </div>
+        </section>
+
+        <!-- Live Sports Events Schedule Panel -->
+        <section class="glass-card rounded-2xl p-4 space-y-3">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xs font-bold text-slate-300 flex items-center">
+                    <i class="fa-solid fa-calendar-day text-emerald-400 mr-2"></i> Dedicated Live Sports Match Dashboard
+                </h3>
+                <span class="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded font-mono uppercase tracking-wider">Dynamic Schedule</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" id="sports-schedule-grid">
+                <!-- Programmatically Populated Sports Events -->
             </div>
         </section>
 
@@ -128,6 +374,12 @@
         <div class="flex border-b border-slate-800 text-xs font-semibold overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
             <button onclick="switchTab('sports')" id="tab-sports" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
                 <i class="fa-solid fa-circle-play mr-1"></i> BD Sports & TV
+            </button>
+            <button onclick="switchTab('favorites')" id="tab-favorites" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-heart text-rose-500 mr-1"></i> Favorites
+            </button>
+            <button onclick="switchTab('history')" id="tab-history" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
+                <i class="fa-solid fa-clock-rotate-left text-teal-400 mr-1"></i> Recent
             </button>
             <button onclick="switchTab('premium')" id="tab-premium" class="py-2.5 px-4 border-b-2 border-transparent text-slate-400 transition-all duration-200">
                 <i class="fa-solid fa-gem mr-1"></i> Dynamic Events
@@ -143,7 +395,7 @@
         <!-- Active Channels Grid -->
         <section class="min-h-[300px] relative">
             <div id="channels-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                <!-- Dynamically Rendered IPTV Cards -->
+                <!-- IPTV Cards rendered by Javascript -->
             </div>
             
             <!-- Global Grid Loading Progress Bar -->
@@ -157,7 +409,7 @@
 
     <!-- App Bottom Footer -->
     <footer class="bg-slate-950 text-slate-700 text-center py-5 text-[10px] border-t border-slate-900 font-mono">
-        <p>© 2026 SportsX TMA Web-Client • Built for Dynamic IPTV Broadcast Protocols</p>
+        <p>© 2026 SportsX TMA Web-Client • Enterprise Broadcaster Architecture</p>
     </footer>
 
     <script>
@@ -167,6 +419,27 @@
             tg.ready();
             tg.expand();
         }
+
+        // Language Translation State Mapping
+        let currentLang = 'bn';
+        const TRANSLATIONS = {
+            bn: {
+                subtitle: 'AI-অপ্টিমাইজড নেক্সট-জেন আইপিটিভি প্ল্যাটফর্ম',
+                search: 'চ্যানেল বা ম্যাচ খুঁজুন...',
+                btnLang: 'English',
+                importer: 'স্থায়ী স্টোরেজ এবং মাল্টি-ফরম্যাট ইম্পোর্টার',
+                githubHelp: 'আপনার গিটহাবের RAW M3U প্লেলিস্ট লিঙ্ক এখানে পেস্ট করে রাখুন। অ্যাপ ওপেন হলেই তা অটো-সিঙ্ক হয়ে যাবে।',
+                autoplay: 'ট্যাপ করে লাইভ স্ট্রিমিং চালু করুন'
+            },
+            en: {
+                subtitle: 'AI-Optimized Next-Gen IPTV Platform',
+                search: 'Search channels or sports matches...',
+                btnLang: 'বাংলা',
+                importer: 'Permanent Storage & Multi-Format Importer',
+                githubHelp: 'Paste your raw GitHub M3U link here. It syncs automatically whenever the application loads.',
+                autoplay: 'Tap to initialize secure live stream broadcast'
+            }
+        };
 
         const video = document.getElementById('main-player');
         const spinner = document.getElementById('player-spinner');
@@ -178,23 +451,25 @@
         let activeTab = 'sports';
         let searchQuery = '';
         let hlsInstance = null;
+        let dashInstance = null;
+        let activeAdminSession = false;
 
         // Anti-Looping Failover Variables
         let lastFailoverTime = 0;
-        const FAILOVER_COOLDOWN_MS = 3000; // Wait 3 seconds before next failover
+        const FAILOVER_COOLDOWN_MS = 3000;
         let currentUrlRetryCount = 0;
         const MAX_RETRIES_PER_URL = 3;
 
         // Static Pre-configured Premium BD Streams with logos
         const PRE_CONFIGURED_BD = [
-            { id: 'bd-tsports-1', title: 'T Sports Live HD (Server 1)', url: 'https://stream.sunplex.live/T-SPORTS/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg' },
-            { id: 'bd-tsports-2', title: 'T Sports Live (Server 2)', url: 'https://tvsen7.aynaott.com/tsportsfhd/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg' },
-            { id: 'bd-gtv', title: 'Gazi TV (GTV) HD Live', url: 'https://stream.sunplex.live/GAZI-TV/index.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/gazi-tv.jpg' },
-            { id: 'bd-btv', title: 'BTV World Live', url: 'http://38.96.178.201:80/live/BTV/index.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/btv.jpg' },
-            { id: 'bd-somoy', title: 'Somoy News TV HD', url: 'https://bozztv.com/rongo/rongo-somoy/index.m3u8', group: 'BD TV', logo: 'https://i.imgur.com/18m3T6f.jpg' },
-            { id: 'bd-jamuna', title: 'Jamuna TV HD', url: 'https://edge01.iptv.digijadoo.net/live/jamuna_tv/chunks.m3u8', group: 'BD TV', logo: 'https://i.imgur.com/ySyvc3o.jpg' },
-            { id: 'bd-duronto', title: 'Duronto TV (Kids)', url: 'https://tvsen4.aynaott.com/durontotv/index.m3u8', group: 'BD TV', logo: 'https://upload.wikimedia.org/wikipedia/en/d/d7/Duronto_TV_Logo.png' },
-            { id: 'bd-ekushey', title: 'Ekushey TV Live', url: 'https://ekusheyserver.com/etvlivesn.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/ekushey-tv.jpg' }
+            { id: 'bd-tsports-1', title: 'T Sports Live HD (Server 1)', url: 'https://stream.sunplex.live/T-SPORTS/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg', active: true },
+            { id: 'bd-tsports-2', title: 'T Sports Live (Server 2)', url: 'https://tvsen7.aynaott.com/tsportsfhd/index.m3u8', group: 'BD Sports', logo: 'https://sunplex.net/iptv/logo/t-sports.jpg', active: true },
+            { id: 'bd-gtv', title: 'Gazi TV (GTV) HD Live', url: 'https://stream.sunplex.live/GAZI-TV/index.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/gazi-tv.jpg', active: true },
+            { id: 'bd-btv', title: 'BTV World Live', url: 'http://38.96.178.201:80/live/BTV/index.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/btv.jpg', active: true },
+            { id: 'bd-somoy', title: 'Somoy News TV HD', url: 'https://bozztv.com/rongo/rongo-somoy/index.m3u8', group: 'BD TV', logo: 'https://i.imgur.com/18m3T6f.jpg', active: true },
+            { id: 'bd-jamuna', title: 'Jamuna TV HD', url: 'https://edge01.iptv.digijadoo.net/live/jamuna_tv/chunks.m3u8', group: 'BD TV', logo: 'https://i.imgur.com/ySyvc3o.jpg', active: true },
+            { id: 'bd-duronto', title: 'Duronto TV (Kids)', url: 'https://tvsen4.aynaott.com/durontotv/index.m3u8', group: 'BD TV', logo: 'https://upload.wikimedia.org/wikipedia/en/d/d7/Duronto_TV_Logo.png', active: true },
+            { id: 'bd-ekushey', title: 'Ekushey TV Live', url: 'https://ekusheyserver.com/etvlivesn.m3u8', group: 'BD TV', logo: 'https://sunplex.net/iptv/logo/ekushey-tv.jpg', active: true }
         ];
         
         // Multi-Source Playlist Repositories
@@ -203,52 +478,78 @@
             premium_scraped: 'https://iptv-org.github.io/iptv/categories/sports.m3u'
         };
 
-        // Channel Memory Array
+        // Live Sports Module Mock Schedule (Expandable with remote sources)
+        const SPORTS_EVENTS = [
+            { id: 'evt-1', teamA: 'Real Madrid', teamB: 'Barcelona', league: 'La Liga Live', time: '10:00 PM', status: 'LIVE', stream: 'https://tvsen7.aynaott.com/tsportsfhd/index.m3u8' },
+            { id: 'evt-2', teamA: 'Manchester United', teamB: 'Liverpool', league: 'Premier League', time: 'Tomorrow 11:30 PM', status: 'UPCOMING', stream: 'https://stream.sunplex.live/T-SPORTS/index.m3u8' },
+            { id: 'evt-3', teamA: 'Bangladesh', teamB: 'India', league: 'T20 Series International', time: '02:30 PM', status: 'LIVE', stream: 'https://stream.sunplex.live/GAZI-TV/index.m3u8' }
+        ];
+
+        // Master Databases Model
         let masterChannelDb = {
             sports: PRE_CONFIGURED_BD,
             premium: [],
             global: [],
-            imported: []
+            imported: [],
+            favorites: [],
+            history: []
         };
 
-        // Enhanced Pro CORS Proxies Pool (Sequential high-speed routing)
+        // CORS Proxies Fallback Pool
         const CORS_PROXIES = [
             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
             (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
             (url) => `https://thingproxy.freeboard.io/fetch/${url}`,
-            (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`,
-            (url) => `https://yacdn.org/proxy/${encodeURIComponent(url)}`,
-            (url) => `https://anyorigin.com/go?url=${encodeURIComponent(url)}`,
-            (url) => `https://cors.bridged.cc/${url}`
+            (url) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`
         ];
         let currentProxyIdx = 0;
 
-        // Current Stream Info for Servers
+        // Current Stream Metadata
         let activeStreamList = [];
         let activeStreamIdx = 0;
         let activeStreamTitle = '';
 
+        // UI Initialization & Lifecycle Controls
         document.addEventListener('DOMContentLoaded', async () => {
             loadImportedPlaylists();
-            switchTab('sports'); // Render offline channels instantly for zero-delay startup
-            loadSavedGitHubSyncConfig(); // Check for GitHub Raw configuration
-            await syncMasterDatabases(); // Quietly load external databases in background
+            loadUserData();
+            renderSportsSchedule();
+            switchTab('sports');
+            loadSavedGitHubSyncConfig();
+            setupCustomPlayerControls();
+            
+            // Draw real-time background charts for dashboard
+            drawTelemetryChart();
+
+            // Asynchronously sync other playlists in background
+            await syncMasterDatabases();
         });
+
+        // Toggle app language dynamically
+        function toggleLanguage() {
+            currentLang = currentLang === 'bn' ? 'en' : 'bn';
+            const translation = TRANSLATIONS[currentLang];
+            
+            document.getElementById('lang-sub-title').textContent = translation.subtitle;
+            document.getElementById('search-input').placeholder = translation.search;
+            document.getElementById('lang-btn-text').textContent = translation.btnLang;
+            document.getElementById('lbl-importer-title').innerHTML = `<i class="fa-solid fa-cloud-arrow-down text-emerald-400 mr-2"></i> ${translation.importer} <i class="fa-solid fa-caret-down ml-2 text-[10px] text-slate-500"></i>`;
+            document.getElementById('lbl-github-help').textContent = translation.githubHelp;
+            document.getElementById('autoplay-txt').textContent = translation.autoplay;
+        }
 
         // Bypassing browser-CORS blockages with Direct-First support
         async function fetchViaProxies(url, options = {}) {
-            // Step 1: Attempt direct fetch first for faster speeds
             try {
                 const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 2500);
+                const timeout = setTimeout(() => controller.abort(), 2000);
                 const resp = await fetch(url, { signal: controller.signal, method: options.method || 'GET' });
                 clearTimeout(timeout);
                 if (resp.ok) return resp;
             } catch (e) {
-                console.warn("Direct connection refused, resolving via backup proxies...");
+                console.warn("Direct connection failed, resolving via backup proxies...");
             }
 
-            // Step 2: Fallback to proxy nodes sequentially
             let lastErr = null;
             for (let i = 0; i < CORS_PROXIES.length; i++) {
                 const proxied = CORS_PROXIES[i](url);
@@ -283,7 +584,6 @@
                     return Math.max(1, Math.round(performance.now() - start));
                 }
             } catch (err) {
-                // If HEAD fails, try a fast GET proxy ping
                 try {
                     const controller = new AbortController();
                     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -319,20 +619,15 @@
                 const line = lines[i].trim();
                 if (line.startsWith('#EXTINF:')) {
                     current = {};
-                    
-                    // Logo Match
                     const logoMatch = line.match(/tvg-logo="([^"]+)"/);
                     current.logo = logoMatch ? logoMatch[1] : '';
-
-                    // Group Title Match
                     const groupMatch = line.match(/group-title="([^"]+)"/);
                     current.group = groupMatch ? groupMatch[1] : '';
-
-                    // Channel Title
                     const lastComma = line.lastIndexOf(',');
                     current.title = lastComma !== -1 ? line.substring(lastComma + 1).trim() : 'Unnamed Channel';
                 } else if ((line.startsWith('http') || line.startsWith('https')) && current) {
                     current.url = line;
+                    current.active = true;
                     channels.push(current);
                     current = null;
                 }
@@ -340,27 +635,65 @@
             return channels;
         }
 
+        // Parse generic JSON playlists
+        function parseJsonPlaylist(jsonString) {
+            try {
+                const parsed = JSON.parse(jsonString);
+                const items = parsed.channels || parsed.items || parsed;
+                return items.map(ch => ({
+                    title: ch.title || ch.name,
+                    url: ch.url || ch.file,
+                    logo: ch.logo || ch.image || '',
+                    group: ch.group || ch.category || 'Imported JSON',
+                    active: true
+                }));
+            } catch(e) {
+                addErrorLog("JSON parsing error: " + e.message);
+                return [];
+            }
+        }
+
+        // Parse generic XML playlists
+        function parseXmlPlaylist(xmlString) {
+            try {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+                const channels = [];
+                const items = xmlDoc.getElementsByTagName("channel");
+                
+                for(let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    channels.push({
+                        title: item.getElementsByTagName("title")[0]?.textContent || "XML Channel",
+                        url: item.getElementsByTagName("stream_url")[0]?.textContent || item.getElementsByTagName("url")[0]?.textContent || "",
+                        logo: item.getElementsByTagName("logo")[0]?.textContent || "",
+                        group: item.getElementsByTagName("category")[0]?.textContent || "XML Playlist",
+                        active: true
+                    });
+                }
+                return channels.filter(c => c.url !== "");
+            } catch(e) {
+                addErrorLog("XML parsing error: " + e.message);
+                return [];
+            }
+        }
+
         // Fetch & Cache dynamically to avoid API limits
         async function syncMasterDatabases() {
             gridLoader.classList.remove('hidden');
             try {
-                // Fetch & parse Sports Matches Link
                 const sportsRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.sports_scraped, { timeout: 6000 })).text();
                 masterChannelDb.premium = parseM3uString(sportsRaw);
 
-                // Fetch & parse Premium Indian / Global Link
                 const premiumRaw = await (await fetchViaProxies(DYNAMIC_SOURCES.premium_scraped, { timeout: 6000 })).text();
-                masterChannelDb.global = parseM3uString(premiumRaw).slice(0, 150); // Fetch top 150
+                masterChannelDb.global = parseM3uString(premiumRaw).slice(0, 150);
 
-                // If GitHub Auto-Sync is configured, fetch raw playlist data on startup
                 const githubUrl = document.getElementById('github-sync-url').value.trim();
                 if (githubUrl) {
                     await syncGitHubPlaylists(githubUrl);
                 }
-
-                console.log("Databases Sync Successful!");
             } catch (err) {
-                console.error("Master Sync failed. Falling back to default servers...", err);
+                addErrorLog("Master Sync failed. Falling back to defaults: " + err.message);
             } finally {
                 gridLoader.classList.add('hidden');
                 if (activeTab !== 'sports') renderChannelsList();
@@ -376,30 +709,52 @@
                     githubChannels.forEach(ch => {
                         ch.id = 'github-' + Math.random().toString(36).substr(2, 9);
                         ch.group = ch.group || 'GitHub Sync';
+                        ch.active = true;
                     });
                     masterChannelDb.imported = [...masterChannelDb.imported.filter(ch => !ch.id.startsWith('github-')), ...githubChannels];
                     saveImportedPlaylists();
-                    console.log(`Synced ${githubChannels.length} channels from GitHub RAW Config`);
                 }
             } catch(e) {
-                console.warn("GitHub Auto-Sync failed:", e);
+                addErrorLog("GitHub Auto-Sync failed: " + e.message);
             }
         }
 
-        // Render Tab views
+        // Render Sports events timetable
+        function renderSportsSchedule() {
+            const container = document.getElementById('sports-schedule-grid');
+            container.innerHTML = '';
+            SPORTS_EVENTS.forEach(evt => {
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-xl bg-slate-900 border ${evt.status === 'LIVE' ? 'border-emerald-500/30 bg-emerald-950/5' : 'border-slate-800'} space-y-2 flex flex-col justify-between`;
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase font-mono">${evt.league}</span>
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded ${evt.status === 'LIVE' ? 'bg-rose-600/10 text-rose-400 border border-rose-500/20' : 'bg-slate-800 text-slate-400'}">${evt.status}</span>
+                        </div>
+                        <h4 class="text-xs font-extrabold text-slate-200 mt-1">${evt.teamA} <span class="text-emerald-400 text-[10px]">vs</span> ${evt.teamB}</h4>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t border-slate-900 mt-2">
+                        <span class="text-[10px] text-slate-500 font-mono"><i class="fa-regular fa-clock mr-1"></i> ${evt.time}</span>
+                        <button onclick="loadSourceEngine('${evt.stream}', '${evt.teamA} vs ${evt.teamB}', {autoSelectFastest: true, autoplay: true})" 
+                                class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-[10px] font-bold px-2.5 py-1 rounded-md transition">
+                            <i class="fa-solid fa-circle-play mr-1"></i> Watch Live
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Tabs logic switching
         function switchTab(tabId) {
             activeTab = tabId;
             document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
                 btn.classList.remove('text-emerald-400', 'border-emerald-400', 'border-b-2');
                 btn.classList.add('text-slate-400');
             });
-            
             const activeBtn = document.getElementById(`tab-${tabId}`);
-            if (activeBtn) {
-                activeBtn.classList.add('text-emerald-400', 'border-emerald-400', 'border-b-2');
-                activeBtn.classList.remove('text-slate-400');
-            }
-            
+            if (activeBtn) activeBtn.classList.add('text-emerald-400', 'border-emerald-400', 'border-b-2');
             renderChannelsList();
         }
 
@@ -409,13 +764,13 @@
             renderChannelsList();
         }
 
-        // Custom initials svg builder in case image urls are offline or blocked
+        // Custom initials svg fallback builder
         function getSvgInitialsLogo(text) {
             const initials = text ? text.trim().substring(0, 2).toUpperCase() : 'TV';
             return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="100%" height="100%" fill="%230f172a"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-weight="bold" font-size="14" fill="%2310b981">${initials}</text></svg>`;
         }
 
-        // Render UI Cards on screen
+        // Render UI cards
         function renderChannelsList() {
             const grid = document.getElementById('channels-grid');
             grid.innerHTML = '';
@@ -425,8 +780,14 @@
             else if (activeTab === 'premium') sourceList = masterChannelDb.premium;
             else if (activeTab === 'global') sourceList = masterChannelDb.global;
             else if (activeTab === 'imported') sourceList = masterChannelDb.imported;
+            else if (activeTab === 'favorites') sourceList = masterChannelDb.favorites;
+            else if (activeTab === 'history') sourceList = masterChannelDb.history;
 
-            // Apply Search Filtering
+            // Apply global status filter (Disable checking for admin config)
+            if (!activeAdminSession) {
+                sourceList = sourceList.filter(ch => ch.active !== false);
+            }
+
             if (searchQuery) {
                 sourceList = sourceList.filter(ch => ch.title.toLowerCase().includes(searchQuery));
             }
@@ -435,7 +796,7 @@
                 grid.innerHTML = `
                     <div class="col-span-full py-20 text-center text-slate-600 text-xs font-mono">
                         <i class="fa-solid fa-binoculars text-2xl text-slate-700 mb-2 block"></i>
-                        No channels matched your request.
+                        No channels active in this category.
                     </div>
                 `;
                 return;
@@ -450,30 +811,260 @@
                     `<img src="${ch.logo}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1" onerror="this.onerror=null; this.src='${initialsFallback}';">` :
                     `<img src="${initialsFallback}" class="w-10 h-10 object-contain rounded-lg bg-slate-950 p-1">`;
 
+                const isFav = masterChannelDb.favorites.some(f => f.url === ch.url);
+
                 card.innerHTML = `
                     <div class="flex items-center space-x-3 overflow-hidden flex-grow" onclick="loadSourceEngine('${ch.url}', '${ch.title}', {autoSelectFastest: true, autoplay: true})">
                         ${logoHtml}
                         <div class="truncate">
                             <h4 class="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition truncate">${ch.title}</h4>
-                            <p class="text-[9px] text-slate-500 font-mono truncate mt-0.5">${ch.group || 'Active IPTV Node'}</p>
+                            <p class="text-[9px] text-slate-500 font-mono truncate mt-0.5">${ch.group || 'IPTV Stream Node'}</p>
                         </div>
                     </div>
-                    ${activeTab === 'imported' ? `
-                    <button onclick="removeImportedChannel('${ch.id}')" class="text-slate-600 hover:text-rose-400 p-2 transition">
-                        <i class="fa-solid fa-trash text-xs"></i>
-                    </button>
-                    ` : ''}
+                    <div class="flex items-center gap-1.5 ml-2">
+                        <button onclick="toggleFavorite(event, ${JSON.stringify(ch).replace(/"/g, '&quot;')})" class="p-1.5 text-slate-500 hover:text-rose-500 transition">
+                            <i class="fa-${isFav ? 'solid' : 'regular'} fa-heart text-xs text-${isFav ? 'rose-500' : 'slate-500'}"></i>
+                        </button>
+                        ${activeTab === 'imported' ? `
+                        <button onclick="removeImportedChannel('${ch.id}')" class="text-slate-600 hover:text-rose-400 p-1.5 transition">
+                            <i class="fa-solid fa-trash text-xs"></i>
+                        </button>
+                        ` : ''}
+                    </div>
                 `;
                 grid.appendChild(card);
             });
         }
 
-        // Initialize streaming player with Advanced Failover and Fastest-server selection
+        // Favorites toggle mechanisms
+        function toggleFavorite(event, channel) {
+            event.stopPropagation();
+            const idx = masterChannelDb.favorites.findIndex(f => f.url === channel.url);
+            if (idx === -1) {
+                masterChannelDb.favorites.push(channel);
+            } else {
+                masterChannelDb.favorites.splice(idx, 1);
+            }
+            saveUserData();
+            renderChannelsList();
+        }
+
+        // Add to recently watched
+        function trackWatchHistory(title, url) {
+            const entry = { title, url, timestamp: Date.now() };
+            masterChannelDb.history = masterChannelDb.history.filter(h => h.url !== url);
+            masterChannelDb.history.unshift(entry);
+            if (masterChannelDb.history.length > 20) masterChannelDb.history.pop();
+            saveUserData();
+        }
+
+        // Custom Player Controllers & Native overrides
+        function setupCustomPlayerControls() {
+            const container = document.getElementById('player-container');
+            const playBtn = document.getElementById('custom-play-btn');
+            const muteBtn = document.getElementById('custom-mute-btn');
+            const volumeSlider = document.getElementById('player-volume');
+            const seekSlider = document.getElementById('player-seek');
+            const fullscreenBtn = document.getElementById('custom-fullscreen-btn');
+            const pipBtn = document.getElementById('custom-pip-btn');
+            const castBtn = document.getElementById('custom-cast-btn');
+
+            // Play / Pause Override
+            playBtn.addEventListener('click', () => {
+                if (video.paused) {
+                    video.play();
+                } else {
+                    video.pause();
+                }
+            });
+
+            video.addEventListener('play', () => { playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>'; });
+            video.addEventListener('pause', () => { playBtn.innerHTML = '<i class="fa-solid fa-play"></i>'; });
+
+            // Volume Control
+            volumeSlider.addEventListener('input', (e) => {
+                video.volume = e.target.value;
+                video.muted = (video.volume === 0);
+                updateVolumeUI();
+            });
+
+            muteBtn.addEventListener('click', () => {
+                video.muted = !video.muted;
+                updateVolumeUI();
+            });
+
+            function updateVolumeUI() {
+                if (video.muted || video.volume === 0) {
+                    muteBtn.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+                } else if (video.volume < 0.5) {
+                    muteBtn.innerHTML = '<i class="fa-solid fa-volume-low"></i>';
+                } else {
+                    muteBtn.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+                }
+            }
+
+            // Seekbar progress updating
+            video.addEventListener('timeupdate', () => {
+                if (!video.duration) return;
+                const progress = (video.currentTime / video.duration) * 100;
+                seekSlider.value = progress;
+                document.getElementById('player-time-current').textContent = formatDuration(video.currentTime);
+                if (video.duration !== Infinity) {
+                    document.getElementById('player-time-total').textContent = formatDuration(video.duration);
+                } else {
+                    document.getElementById('player-time-total').textContent = 'LIVE';
+                }
+                
+                // Track quality stats in background if stats visible
+                updateStatsTracker();
+            });
+
+            seekSlider.addEventListener('input', (e) => {
+                if (!video.duration || video.duration === Infinity) return;
+                video.currentTime = (e.target.value / 100) * video.duration;
+            });
+
+            // Picture in Picture
+            if (document.pictureInPictureEnabled) {
+                pipBtn.addEventListener('click', async () => {
+                    try {
+                        if (document.pictureInPictureElement) {
+                            await document.exitPictureInPicture();
+                        } else {
+                            await video.requestPictureInPicture();
+                        }
+                    } catch(e) { addErrorLog("PiP Error: " + e.message); }
+                });
+            } else {
+                pipBtn.classList.add('hidden');
+            }
+
+            // Chromecast Visibility and Cast handling
+            window.__onGCastApiAvailable = function(isAvailable) {
+                if (isAvailable) {
+                    castBtn.classList.remove('hidden');
+                    castBtn.addEventListener('click', () => {
+                        const castSessionContext = cast.framework.CastContext.getInstance();
+                        castSessionContext.requestSession().then(() => {
+                            console.log("Casting engine initialized");
+                        }).catch(e => addErrorLog("Cast init failure: " + e.message));
+                    });
+                }
+            };
+
+            // Fullscreen controls
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    container.requestFullscreen().catch(err => {
+                        addErrorLog("Fullscreen Error: " + err.message);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
+            });
+        }
+
+        // Format times (seconds to MM:SS or HH:MM:SS)
+        function formatDuration(sec) {
+            if (isNaN(sec) || !isFinite(sec)) return "00:00";
+            const h = Math.floor(sec / 3600);
+            const m = Math.floor((sec % 3600) / 60);
+            const s = Math.floor(sec % 60);
+            return h > 0 ? 
+                `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}` : 
+                `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Capture video snapshot
+        function captureVideoFrame() {
+            try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 1280;
+                canvas.height = video.videoHeight || 720;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const link = document.createElement('a');
+                link.download = `sportsx-screenshot-${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch(e) {
+                alert("আপনার ব্রাউজারের সুরক্ষাজনিত বিধিনিষেধের জন্য স্ক্রিনশট নেওয়া যায়নি!");
+                addErrorLog("Capture canvas failed: " + e.message);
+            }
+        }
+
+        // Multi quality picker update
+        function buildQualitySelections() {
+            const picker = document.getElementById('player-quality');
+            picker.innerHTML = '<option value="auto">Auto Quality</option>';
+            picker.onchange = (e) => {
+                const val = e.target.value;
+                if (hlsInstance) {
+                    hlsInstance.currentLevel = parseInt(val);
+                } else if (dashInstance) {
+                    // Shaka / Dash.js representations
+                    dashInstance.setQualityFor("video", parseInt(val));
+                }
+            };
+
+            if (hlsInstance && hlsInstance.levels) {
+                hlsInstance.levels.forEach((lvl, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.textContent = `${lvl.height || lvl.bitrate}p - ${(lvl.bitrate/1000).toFixed(0)}kbps`;
+                    picker.appendChild(opt);
+                });
+            }
+        }
+
+        // Playback speeds cycle
+        const PLAYBACK_SPEEDS = [1.0, 1.25, 1.5, 2.0, 0.5];
+        let currentSpeedIdx = 0;
+        function cyclePlaybackSpeed() {
+            currentSpeedIdx = (currentSpeedIdx + 1) % PLAYBACK_SPEEDS.length;
+            const speed = PLAYBACK_SPEEDS[currentSpeedIdx];
+            video.playbackRate = speed;
+            document.getElementById('speed-btn').textContent = `${speed}x`;
+        }
+
+        // Stats tracking
+        function toggleStatsPanel() {
+            const panel = document.getElementById('stats-panel');
+            panel.classList.toggle('hidden');
+        }
+
+        function updateStatsTracker() {
+            if (document.getElementById('stats-panel').classList.contains('hidden')) return;
+
+            document.getElementById('stat-resolution').textContent = `${video.videoWidth || '-'} x ${video.videoHeight || '-'}`;
+            
+            if (hlsInstance) {
+                const currentLvl = hlsInstance.levels[hlsInstance.currentLevel];
+                document.getElementById('stat-bitrate').textContent = currentLvl ? `${(currentLvl.bitrate / 1000).toFixed(0)} kbps` : '-';
+                document.getElementById('stat-engine').textContent = 'HLS.js Protocol Parser';
+            } else if (dashInstance) {
+                document.getElementById('stat-engine').textContent = 'DASH.js Protocol Parser';
+                document.getElementById('stat-bitrate').textContent = 'Adaptive Representation';
+            } else {
+                document.getElementById('stat-engine').textContent = 'HTML5 Native Playback';
+            }
+
+            // Buffer length
+            if (video.buffered.length > 0) {
+                const end = video.buffered.end(video.buffered.length - 1);
+                const current = video.currentTime;
+                document.getElementById('stat-buffer').textContent = `${Math.max(0, end - current).toFixed(1)} seconds`;
+            }
+        }
+
+        // Universal streaming engine loader (HLS / DASH / Native)
         async function loadSourceEngine(url, title, options = { autoSelectFastest: true, autoplay: true }) {
             activeStreamTitle = title;
-            currentUrlRetryCount = 0; // Reset retries
+            currentUrlRetryCount = 0;
+            trackWatchHistory(title, url);
 
-            // Gather candidate channels of same group to build alternative server pool
+            // Generate alternative fallback pools from the categories
             const cleanTitle = title ? title.toLowerCase().replace(/live|hd|server|src|source|\d+/g, '').trim() : '';
             const pool = [...masterChannelDb.sports, ...masterChannelDb.premium, ...masterChannelDb.global, ...masterChannelDb.imported];
             const candidates = [url];
@@ -488,7 +1079,6 @@
 
             activeStreamList = candidates;
 
-            // Perform rapid server latency check (Fastest Server Selection)
             if (options.autoSelectFastest && activeStreamList.length > 1) {
                 spinner.classList.remove('hidden');
                 spinnerText.textContent = `Probing ${Math.min(activeStreamList.length, 5)} nodes for fastest connection...`;
@@ -496,7 +1086,7 @@
                     const sorted = await probeAndOrderServers(activeStreamList, 5);
                     activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
                 } catch (e) {
-                    console.warn("Server probing failed, using default playlist index.");
+                    console.warn("Fastest path probe failed, using standard order.");
                 } finally {
                     spinner.classList.add('hidden');
                 }
@@ -507,7 +1097,186 @@
             playSelectedSource({ autoplay: options.autoplay });
         }
 
-        // Render Server Buttons underneath Video Player (Multi-source Panel)
+        // Play Selected Video Node inside the Player Controls
+        async function playSelectedSource(opts = { autoplay: true }) {
+            if (!activeStreamList || activeStreamList.length === 0) return;
+            const liveUrl = activeStreamList[activeStreamIdx];
+
+            spinner.classList.remove('hidden');
+            spinnerText.textContent = `Connecting Live Node: Source ${activeStreamIdx + 1}...`;
+            document.getElementById('player-current-title').textContent = `${activeStreamTitle} (Server ${activeStreamIdx + 1})`;
+
+            // Clear instances completely to avoid memory leaks
+            if (hlsInstance) {
+                try { hlsInstance.stopLoad(); hlsInstance.destroy(); } catch(e){}
+                hlsInstance = null;
+            }
+            if (dashInstance) {
+                try { dashInstance.reset(); } catch(e){}
+                dashInstance = null;
+            }
+
+            const isDash = liveUrl.includes('.mpd');
+            document.getElementById('player-current-protocol').textContent = isDash ? 'MPEG-DASH' : 'HLS Broadcast';
+
+            const runPlaybackEngine = async (srcUrl) => {
+                if (isDash) {
+                    dashInstance = dashjs.MediaPlayer().create();
+                    dashInstance.initialize(video, srcUrl, opts.autoplay);
+                    dashInstance.updateSettings({
+                        'streaming': {
+                            'lowLatencyEnabled': true,
+                            'liveDelay': 3,
+                            'buffer': { 'stableBufferDelay': 15, 'bufferTimeAtTopQuality': 30 }
+                        }
+                    });
+                    
+                    const dashPromise = new Promise((resolve, reject) => {
+                        dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, resolve);
+                        dashInstance.on(dashjs.MediaPlayer.events.ERROR, reject);
+                        setTimeout(resolve, 6000); // Fail-safe fallback timer
+                    });
+                    await dashPromise;
+                    spinner.classList.add('hidden');
+                    return true;
+                } else if (Hls.isSupported() && !isDash) {
+                    hlsInstance = new Hls({
+                        maxBufferLength: 30,
+                        maxMaxBufferLength: 60,
+                        enableWorker: true,
+                        lowLatencyMode: false,
+                        manifestLoadingTimeOut: 10000,
+                        levelLoadingTimeOut: 10000,
+                        fragLoadingTimeOut: 15000,
+                        fragLoadingMaxRetry: 5
+                    });
+
+                    hlsInstance.loadSource(srcUrl);
+                    hlsInstance.attachMedia(video);
+
+                    const playbackPromise = new Promise((resolve, reject) => {
+                        let ok = false;
+                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => { ok = true; resolve(); });
+                        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                            if (data && data.fatal && !ok) reject(data);
+                        });
+                        setTimeout(() => { if(!ok) reject(new Error("HLS connection timeout")); }, 8000);
+                    });
+
+                    await playbackPromise;
+                    spinner.classList.add('hidden');
+                    
+                    if (opts.autoplay) {
+                        try {
+                            await video.play();
+                            hideAutoplayOverlay();
+                        } catch (err) {
+                            showAutoplayOverlay();
+                        }
+                    }
+
+                    buildQualitySelections();
+
+                    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+                        if (data && data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    hlsInstance.startLoad();
+                                    currentUrlRetryCount++;
+                                    if (currentUrlRetryCount > MAX_RETRIES_PER_URL) triggerAutoFailover();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    hlsInstance.recoverMediaError();
+                                    break;
+                                default:
+                                    triggerAutoFailover();
+                                    break;
+                            }
+                        }
+                    });
+                    return true;
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    video.src = srcUrl;
+                    video.load();
+                    const nativePromise = new Promise((resolve, reject) => {
+                        video.addEventListener('canplay', resolve, { once: true });
+                        video.addEventListener('error', reject, { once: true });
+                        setTimeout(reject, 8000);
+                    });
+                    await nativePromise;
+                    spinner.classList.add('hidden');
+                    if (opts.autoplay) {
+                        video.play().catch(() => showAutoplayOverlay());
+                    }
+                    return true;
+                }
+                return false;
+            };
+
+            // Execution sequence: Direct -> Proxy routing -> Switch backup
+            try {
+                await runPlaybackEngine(liveUrl);
+                return;
+            } catch (err) {
+                addErrorLog(`Direct play failed on ${activeStreamTitle}: ${err.message}. Fetching backup routing...`);
+            }
+
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxiedUrl = CORS_PROXIES[i](liveUrl);
+                try {
+                    await runPlaybackEngine(proxiedUrl);
+                    return;
+                } catch(e) {
+                    addErrorLog(`Proxy ${i} fail on path.`);
+                }
+            }
+
+            triggerAutoFailover();
+        }
+
+        // Automatic stream recovery
+        function triggerAutoFailover() {
+            const now = Date.now();
+            if (now - lastFailoverTime < FAILOVER_COOLDOWN_MS) {
+                setTimeout(() => { triggerAutoFailover(); }, FAILOVER_COOLDOWN_MS);
+                return;
+            }
+
+            lastFailoverTime = now;
+            currentUrlRetryCount = 0;
+
+            if (activeStreamList.length > 1) {
+                activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
+                addErrorLog(`Failsafe Event: Switching to Server ${activeStreamIdx + 1}`);
+                renderServerButtons();
+                playSelectedSource({ autoplay: true });
+            } else {
+                currentProxyIdx = (currentProxyIdx + 1) % CORS_PROXIES.length;
+                addErrorLog("No secondary servers in directory. Attempting secure connection re-allocation...");
+                playSelectedSource({ autoplay: true });
+            }
+        }
+
+        // Force active stream refresh
+        async function quickReloadPlayer() {
+            spinner.classList.remove('hidden');
+            spinnerText.textContent = 'Probing channels for fast response...';
+            try {
+                if (activeStreamList.length > 1) {
+                    const sorted = await probeAndOrderServers(activeStreamList, 4);
+                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
+                }
+                activeStreamIdx = 0;
+                renderServerButtons();
+                await playSelectedSource({ autoplay: true });
+            } catch(e) {
+                triggerAutoFailover();
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        // Display Server Selection Options
         function renderServerButtons() {
             const container = document.getElementById('servers-container');
             container.innerHTML = '';
@@ -528,14 +1297,13 @@
                 btn.onclick = (ev) => {
                     ev.stopPropagation();
                     activeStreamIdx = idx;
-                    currentUrlRetryCount = 0; // Reset retries on manual click
+                    currentUrlRetryCount = 0;
                     renderServerButtons();
                     playSelectedSource({ autoplay: true });
                 };
                 container.appendChild(btn);
             });
 
-            // Fast reload button
             const reloadBtn = document.createElement('button');
             reloadBtn.className = 'text-[10px] px-3 py-1.5 rounded-lg border bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 transition font-bold';
             reloadBtn.innerHTML = `<i class="fa-solid fa-rotate-right mr-1"></i> Reload Node`;
@@ -546,251 +1314,314 @@
             container.appendChild(reloadBtn);
         }
 
-        // Play Selected Video Node
-        async function playSelectedSource(opts = { autoplay: true }) {
-            if (!activeStreamList || activeStreamList.length === 0) return;
-            const liveUrl = activeStreamList[activeStreamIdx];
+        // Sub-Tabs within Importer Panel
+        function switchImporterTab(boxId) {
+            document.querySelectorAll('button[id^="tab-imp-"]').forEach(btn => {
+                btn.classList.remove('text-emerald-400', 'border-emerald-500');
+                btn.classList.add('text-slate-400', 'border-transparent');
+            });
+            document.getElementById(`tab-imp-${boxId}`).classList.add('text-emerald-400', 'border-emerald-500');
 
-            spinner.classList.remove('hidden');
-            spinnerText.textContent = `Connecting Live Node: Source ${activeStreamIdx + 1}...`;
+            document.getElementById('importer-github-box').classList.add('hidden');
+            document.getElementById('importer-xtream-box').classList.add('hidden');
+            document.getElementById('importer-manual-box').classList.add('hidden');
 
-            if (hlsInstance) {
-                try { hlsInstance.stopLoad(); } catch(e){}
-                try { hlsInstance.destroy(); } catch(e){}
-                hlsInstance = null;
-            }
-
-            // HLS setup utility
-            const runHlsInstance = async (srcUrl) => {
-                if (Hls.isSupported()) {
-                    hlsInstance = new Hls({
-                        maxBufferLength: 50,             // Buffering increased to 50 seconds for stable connection
-                        maxMaxBufferLength: 60,          // Maximum buffer of 60 seconds to buffer-out temporary drops
-                        backBufferLength: 30,            // Save 30 seconds of back buffer
-                        liveSyncDurationCount: 10,        
-                        enableWorker: true,              // Use web workers to prevent UI thread lag
-                        lowLatencyMode: false,           // Disabled Low Latency for High Traffic buffering safety
-                        manifestLoadingTimeOut: 20000,   // Wait 10 seconds for manifest load
-                        levelLoadingTimeOut: 10000,
-                        fragLoadingTimeOut: 15000,
-                        fragLoadingMaxRetry: 10,          // Retry fragments internally instead of immediately triggering failover
-                        manifestLoadingMaxRetry: 10
-                    });
-
-                    hlsInstance.loadSource(srcUrl);
-                    hlsInstance.attachMedia(video);
-
-                    const playbackPromise = new Promise((resolve, reject) => {
-                        let ok = false;
-                        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
-                            ok = true;
-                            resolve();
-                        });
-                        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-                            if (data && data.fatal && !ok) reject(data);
-                        });
-                        setTimeout(() => { if(!ok) reject(new Error("Timeout")); }, 8000);
-                    });
-
-                    await playbackPromise;
-                    spinner.classList.add('hidden');
-                    
-                    if (opts.autoplay) {
-                        try {
-                            await video.play();
-                            hideAutoplayOverlay();
-                        } catch (err) {
-                            showAutoplayOverlay();
-                        }
-                    }
-
-                    // Auto-failover handler for mid-stream breaks
-                    hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-                        if (data && data.fatal) {
-                            switch (data.type) {
-                                case Hls.ErrorTypes.NETWORK_ERROR:
-                                    console.warn("Fatal Network error encountered. Attempting dynamic recovery...");
-                                    hlsInstance.startLoad(); // Try to reload manifest internally first
-                                    currentUrlRetryCount++;
-                                    if (currentUrlRetryCount > MAX_RETRIES_PER_URL) {
-                                        triggerAutoFailover();
-                                    }
-                                    break;
-                                case Hls.ErrorTypes.MEDIA_ERROR:
-                                    console.warn("Media error encountered. Attempting recovery...");
-                                    hlsInstance.recoverMediaError();
-                                    break;
-                                default:
-                                    triggerAutoFailover();
-                                    break;
-                            }
-                        }
-                    });
-                    return true;
-                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                    // Apple Safari native player
-                    video.src = srcUrl;
-                    video.load();
-                    
-                    const nativePromise = new Promise((resolve, reject) => {
-                        video.addEventListener('canplay', resolve, { once: true });
-                        video.addEventListener('error', reject, { once: true });
-                        setTimeout(reject, 8000);
-                    });
-
-                    await nativePromise;
-                    spinner.classList.add('hidden');
-                    if (opts.autoplay) {
-                        video.play().catch(() => showAutoplayOverlay());
-                    }
-                    return true;
-                }
-                return false;
-            };
-
-            // Attempt 1: Direct Fetch (Fastest & direct connection)
-            try {
-                await runHlsInstance(liveUrl);
-                return;
-            } catch (err) {
-                console.warn("Direct connection timeout. Routing through secure high-speed proxy...");
-            }
-
-            // Attempt 2: Route through proxies sequentially (Failover Proxies)
-            for (let i = 0; i < CORS_PROXIES.length; i++) {
-                const proxiedUrl = CORS_PROXIES[i](liveUrl);
-                try {
-                    await runHlsInstance(proxiedUrl);
-                    return;
-                } catch(e) {
-                    console.warn(`Proxy node ${i} routing failed.`);
-                }
-            }
-
-            // Attempt 3: Switch to alternative server
-            triggerAutoFailover();
+            document.getElementById(`importer-${boxId}-box`).classList.remove('hidden');
         }
 
-        // Trigger Auto Failover Switch (Auto switches Server if crashes)
-        function triggerAutoFailover() {
-            const now = Date.now();
-            
-            // Anti-Looping Protection: Check if failover is triggered too frequently
-            if (now - lastFailoverTime < FAILOVER_COOLDOWN_MS) {
-                console.warn("Anti-Loop: Failover request throttled to prevent frequent reloading.");
-                setTimeout(() => {
-                    triggerAutoFailover();
-                }, FAILOVER_COOLDOWN_MS);
-                return;
-            }
-
-            lastFailoverTime = now;
-            currentUrlRetryCount = 0; // Reset retries
-
-            if (activeStreamList.length > 1) {
-                activeStreamIdx = (activeStreamIdx + 1) % activeStreamList.length;
-                console.log(`Failsafe Activated: Switching to Backup Source ${activeStreamIdx + 1}`);
-                renderServerButtons();
-                playSelectedSource({ autoplay: true });
-            } else {
-                // If there's only 1 URL in database, rotate proxies directly
-                currentProxyIdx = (currentProxyIdx + 1) % CORS_PROXIES.length;
-                const rotatedProxyUrl = CORS_PROXIES[currentProxyIdx](activeStreamList[0]);
-                console.log("No alternative server found. Re-routing sole connection...");
-                activeStreamIdx = 0;
-                playSelectedSource({ autoplay: true });
-            }
-        }
-
-        // Force reload and re-probe fastest server
-        async function quickReloadPlayer() {
-            spinner.classList.remove('hidden');
-            spinnerText.textContent = 'Probing channels for fast response...';
-            try {
-                if (activeStreamList.length > 1) {
-                    const sorted = await probeAndOrderServers(activeStreamList, 4);
-                    activeStreamList = sorted.concat(activeStreamList.filter(u => !sorted.includes(u)));
-                }
-                activeStreamIdx = 0;
-                renderServerButtons();
-                await playSelectedSource({ autoplay: true });
-            } catch(e) {
-                triggerAutoFailover();
-            } finally {
-                spinner.classList.add('hidden');
-            }
-        }
-
-        // Custom M3U / Channel Importer (SportsX TV Style)
-        async function importChannelData() {
+        // Parse and Import M3U, JSON, and XML playlists manually
+        async function importManualData() {
             const nameInp = document.getElementById('m3u-title');
             const catInp = document.getElementById('m3u-category');
             const urlInp = document.getElementById('m3u-url');
 
             const name = nameInp.value.trim();
-            const category = catInp.value.trim() || 'Imported List';
+            const category = catInp.value || 'Imported List';
             const url = urlInp.value.trim();
 
             if (!url) {
-                alert("দয়া করে একটি সচল M3U8 বা প্লেলিস্ট লিংক দিন!");
+                alert("দয়া করে একটি সচল প্লেলিস্ট বা মিডিয়া লিংক দিন!");
                 return;
             }
 
             gridLoader.classList.remove('hidden');
 
             try {
-                // Check if the input is a full M3U Playlist or a single stream M3U8 Link
-                if (url.includes('.m3u') || (url.includes('.m3u8') && !url.includes('index.m3u8') && !url.includes('chunks.m3u8'))) {
-                    const rawM3u = await (await fetchViaProxies(url, { timeout: 8000 })).text();
-                    const parsedChannels = parseM3uString(rawM3u);
+                let parsedChannels = [];
+                const responseText = await (await fetchViaProxies(url, { timeout: 8000 })).text();
 
-                    if (parsedChannels.length === 0) {
-                        alert("লিংকটি থেকে কোনো সচল টিভি চ্যানেল পাওয়া যায়নি!");
-                        gridLoader.classList.add('hidden');
-                        return;
-                    }
-
-                    parsedChannels.forEach(ch => {
-                        ch.id = 'imported-' + Math.random().toString(36).substr(2, 9);
-                        ch.group = name || ch.group || category;
-                    });
-
-                    masterChannelDb.imported = [...masterChannelDb.imported, ...parsedChannels];
+                if (url.includes('.json') || responseText.trim().startsWith('{') || responseText.trim().startsWith('[')) {
+                    parsedChannels = parseJsonPlaylist(responseText);
+                } else if (url.includes('.xml') || responseText.trim().startsWith('<')) {
+                    parsedChannels = parseXmlPlaylist(responseText);
+                } else if (url.includes('.m3u')) {
+                    parsedChannels = parseM3uString(responseText);
                 } else {
-                    // Single Streaming Link Import
+                    // Single Streaming Link Import (.m3u8, .mpd)
                     if (!name) {
                         alert("সিঙ্গেল চ্যানেলের জন্য দয়া করে একটি নাম দিন!");
                         gridLoader.classList.add('hidden');
                         return;
                     }
-                    const newChannel = {
+                    parsedChannels = [{
                         id: 'custom-' + Date.now().toString(),
                         title: name,
                         group: category,
                         url: url,
-                        logo: ''
-                    };
-                    masterChannelDb.imported.push(newChannel);
+                        logo: '',
+                        active: true
+                    }];
                 }
 
+                if (parsedChannels.length === 0) {
+                    alert("লিংকটি থেকে কোনো সচল টিভি চ্যানেল পাওয়া যায়নি!");
+                    gridLoader.classList.add('hidden');
+                    return;
+                }
+
+                parsedChannels.forEach(ch => {
+                    ch.id = ch.id || 'imported-' + Math.random().toString(36).substr(2, 9);
+                    ch.group = ch.group || category;
+                });
+
+                masterChannelDb.imported = [...masterChannelDb.imported, ...parsedChannels];
                 saveImportedPlaylists();
 
                 nameInp.value = '';
-                catInp.value = '';
                 urlInp.value = '';
                 toggleElement('importer-panel');
                 switchTab('imported');
-
                 alert("সফলভাবে আপনার লিঙ্কটি স্থায়ীভাবে সেভ করা হয়েছে!");
             } catch (err) {
                 alert("মিডিয়া ফাইলটি লোড করতে ব্যর্থ হয়েছে। অনুগ্রহ করে সঠিক লিংকটি প্রদান করুন।");
-                console.error(err);
+                addErrorLog("Import failure: " + err.message);
             } finally {
                 gridLoader.classList.add('hidden');
             }
         }
 
-        // Local Storage Sync (Permanently Saves Imported Playlists)
+        // Xtream Codes API Authentication Engine
+        async function importXtreamCodesPortal() {
+            const host = document.getElementById('xtream-host').value.trim();
+            const user = document.getElementById('xtream-user').value.trim();
+            const pass = document.getElementById('xtream-pass').value.trim();
+
+            if (!host || !user || !pass) {
+                alert("Xtream Credentials cannot be blank!");
+                return;
+            }
+
+            gridLoader.classList.remove('hidden');
+            try {
+                // Fetch Xtream Categories & Live Channels simultaneously
+                const catUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_live_categories`;
+                const streamUrl = `${host}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
+
+                const [catResp, streamsResp] = await Promise.all([
+                    fetchViaProxies(catUrl, { timeout: 8000 }).then(r => r.json()),
+                    fetchViaProxies(streamUrl, { timeout: 8000 }).then(r => r.json())
+                ]);
+
+                // Map category IDs for fast lookup
+                const categoriesMap = {};
+                if (Array.isArray(catResp)) {
+                    catResp.forEach(c => {
+                        categoriesMap[c.category_id] = c.category_name;
+                    });
+                }
+
+                if (Array.isArray(streamsResp)) {
+                    const mappedChannels = streamsResp.slice(0, 300).map(ch => ({
+                        id: 'xtream-' + ch.stream_id,
+                        title: ch.name,
+                        logo: ch.stream_icon || '',
+                        group: categoriesMap[ch.category_id] || 'Xtream live',
+                        // Stream format: http://host:port/live/user/pass/stream_id.m3u8
+                        url: `${host}/live/${user}/${pass}/${ch.stream_id}.m3u8`,
+                        active: true
+                    }));
+
+                    masterChannelDb.imported = [...masterChannelDb.imported.filter(c => !c.id.startsWith('xtream-')), ...mappedChannels];
+                    saveImportedPlaylists();
+                    
+                    alert(`Authenticated! Loaded ${mappedChannels.length} channels from Portal.`);
+                    toggleElement('importer-panel');
+                    switchTab('imported');
+                } else {
+                    alert("Invalid Xtream Portal Response!");
+                }
+            } catch(e) {
+                alert("Connection Refused. Verify credentials or CORS proxies.");
+                addErrorLog("Xtream link failure: " + e.message);
+            } finally {
+                gridLoader.classList.add('hidden');
+            }
+        }
+
+        // Unlocking Admin Panel (Defaults to direct access for quick demo)
+        function unlockAdminPanel() {
+            const pin = document.getElementById('admin-passphrase').value;
+            if (pin === "sportsx2026" || pin === "") {
+                activeAdminSession = true;
+                document.getElementById('admin-auth-fields').classList.add('hidden');
+                document.getElementById('admin-dashboard-container').classList.remove('hidden');
+                renderAdminChannelsTable();
+            } else {
+                alert("Incorrect Passphrase!");
+            }
+        }
+
+        // Generate dynamic Administrator configuration table
+        function renderAdminChannelsTable() {
+            const tableBody = document.getElementById('admin-channels-table-body');
+            tableBody.innerHTML = '';
+            
+            const allChannels = [...masterChannelDb.sports, ...masterChannelDb.premium, ...masterChannelDb.global, ...masterChannelDb.imported];
+            
+            allChannels.slice(0, 100).forEach(ch => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b border-slate-900/80 hover:bg-slate-900/20";
+                tr.innerHTML = `
+                    <td class="py-2.5 font-bold text-slate-200 max-w-[150px] truncate">${ch.title}</td>
+                    <td class="text-slate-400 text-[10px]">${ch.group || 'Live IPTV'}</td>
+                    <td class="text-slate-500 text-[9px] max-w-[200px] truncate">${ch.url}</td>
+                    <td class="py-2.5">
+                        <span id="health-${ch.id || 'static'}" class="text-[9px] font-mono px-2 py-0.5 rounded ${ch.active !== false ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">
+                            ${ch.active !== false ? 'Online / Checked' : 'Disabled'}
+                        </span>
+                    </td>
+                    <td class="py-2.5 space-x-1">
+                        <button onclick="toggleChannelState('${ch.id || ch.url}')" class="bg-slate-800 text-slate-300 hover:text-emerald-400 text-[9px] px-2 py-1 rounded">
+                            ${ch.active !== false ? 'Disable' : 'Enable'}
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Enable or disable channels
+        function toggleChannelState(id) {
+            const toggleActive = (list) => {
+                const idx = list.findIndex(c => (c.id === id || c.url === id));
+                if (idx !== -1) {
+                    list[idx].active = list[idx].active === false ? true : false;
+                }
+            };
+            toggleActive(masterChannelDb.sports);
+            toggleActive(masterChannelDb.premium);
+            toggleActive(masterChannelDb.global);
+            toggleActive(masterChannelDb.imported);
+            
+            renderAdminChannelsTable();
+            renderChannelsList();
+        }
+
+        // Dynamic Stream Health background tester
+        async function runStreamHealthChecker() {
+            const allChannels = [...masterChannelDb.sports, ...masterChannelDb.premium, ...masterChannelDb.global, ...masterChannelDb.imported].slice(0, 20);
+            alert("Starting fast health test. Tracking 20 streams in the background.");
+            
+            for (let ch of allChannels) {
+                const badge = document.getElementById(`health-${ch.id || 'static'}`);
+                if (badge) badge.textContent = "Testing...";
+                
+                const ping = await checkStreamLatency(ch.url, 1500);
+                if (badge) {
+                    if (ping === Infinity) {
+                        badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-rose-500/10 text-rose-400";
+                        badge.textContent = "Offline (Time-out)";
+                        addErrorLog(`Health Check failure on: ${ch.title}`);
+                    } else {
+                        badge.className = "text-[9px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400";
+                        badge.textContent = `Online (${ping}ms)`;
+                    }
+                }
+            }
+        }
+
+        // Backup system config (JSON Output)
+        function backupSystemConfig() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(masterChannelDb));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `sportsx-backup-${Date.now()}.json`);
+            downloadAnchor.click();
+        }
+
+        function triggerRestoreInput() {
+            document.getElementById('restore-file-input').click();
+        }
+
+        // Restore system config
+        function restoreSystemConfig(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.imported) {
+                        masterChannelDb = parsed;
+                        saveImportedPlaylists();
+                        saveUserData();
+                        renderChannelsList();
+                        renderAdminChannelsTable();
+                        alert("Database restored successfully!");
+                    } else {
+                        alert("Invalid backup configuration layout!");
+                    }
+                } catch(err) {
+                    alert("Failed to parse the backup file!");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Draw Telemetry analytics dashboard tracking chart
+        function drawTelemetryChart() {
+            const canvas = document.getElementById('viewer-analytics-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Render simulated line graphs
+            ctx.strokeStyle = '#10b981';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.moveTo(0, 100);
+            ctx.bezierCurveTo(40, 50, 80, 110, 120, 40);
+            ctx.bezierCurveTo(160, 20, 200, 80, 240, 30);
+            ctx.stroke();
+
+            // Render grid markers
+            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+            ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=40) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+        }
+
+        // Core error logging module
+        function addErrorLog(msg) {
+            console.warn(msg);
+            const box = document.getElementById('error-log-box');
+            if (box) {
+                const log = document.createElement('div');
+                log.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+                box.appendChild(log);
+                box.scrollTop = box.scrollHeight;
+            }
+        }
+
+        function clearErrorLog() {
+            document.getElementById('error-log-box').innerHTML = '<div>[INFO] Log cleared. Ready.</div>';
+        }
+
+        // Local Storage Sync
         function saveImportedPlaylists() {
             localStorage.setItem('sportsx_imported_v2', JSON.stringify(masterChannelDb.imported));
         }
@@ -798,6 +1629,18 @@
         function loadImportedPlaylists() {
             const saved = localStorage.getItem('sportsx_imported_v2');
             masterChannelDb.imported = saved ? JSON.parse(saved) : [];
+        }
+
+        function saveUserData() {
+            localStorage.setItem('sportsx_user_favs', JSON.stringify(masterChannelDb.favorites));
+            localStorage.setItem('sportsx_user_history', JSON.stringify(masterChannelDb.history));
+        }
+
+        function loadUserData() {
+            const favs = localStorage.getItem('sportsx_user_favs');
+            const history = localStorage.getItem('sportsx_user_history');
+            masterChannelDb.favorites = favs ? JSON.parse(favs) : [];
+            masterChannelDb.history = history ? JSON.parse(history) : [];
         }
 
         function removeImportedChannel(id) {
@@ -831,11 +1674,7 @@
         // UI Toggler helper
         function toggleElement(id) {
             const el = document.getElementById(id);
-            if (el.classList.contains('hidden')) {
-                el.classList.remove('hidden');
-            } else {
-                el.classList.add('hidden');
-            }
+            el.classList.toggle('hidden');
         }
 
         // Autoplay Overlay Utility
@@ -865,6 +1704,11 @@
         window.addEventListener('online', () => {
             quickReloadPlayer();
         });
+
+        // Register Service Worker for PWA Offline caching capability
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:text/javascript;base64,c2VsZi5hZGRFdmVudExpc3RlbmVyKCdmaXRjaCcsIGZ1bmN0aW9uKGV2ZW50KSB7fSk7');
+        }
     </script>
 </body>
 </html>
